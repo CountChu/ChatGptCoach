@@ -1,0 +1,81 @@
+I define the commands and describe them in the "//"" comments as below.
+
+//
+// The post-begin command informs you that the title of the document to be posted is TITLE.
+//
+
+post-begin: TITLE 
+
+//
+// The post-pages command means that I post the TITLE document many pages. 
+// The N in "Page N" means a page number. E.g., Page 1
+// The N+1 in "Page N+1" means the next page number. E.g., Page2
+// The CONTENT means the content of the page.
+// Please just accept them and don't response them.
+//
+
+post-pages:
+
+Page N
+
+CONTENT
+
+Page N+1
+
+CONTENT
+
+...
+
+/
+// An example of the first post-pages command:
+//
+
+post-pages:
+
+Page 1
+
+HKG18-402: Secure Key Services in 
+OP-TEE 
+Etienne Carrière, STMicroelectronics 
+
+Page 2
+
+Agenda 
+●Overview of Secure Key Services 
+●What is OP-TEE? 
+●Which Client Interface? 
+●Implementation: the SKS 
+●What’s next? 
+
+//
+// An example of the second post-pages command:
+//
+
+post-pages:
+
+Page 3
+
+HSM, SE, TPM, TEE: Secure Services 
+●Hardware Security Module (HSM) 
+●Secure Elements as Smartcard, SIM cards. 
+
+Page 4
+
+HSM, SE, TPM, TEE: Secure Keys 
+HSMs, SEs, TPMs provide secure key management services: 
+
+Page 5
+
+Agenda 
+●Overview of Secure Key Services 
+●What is OP-TEE? 
+
+//
+// The post-end command informs you that the post is done. 
+// You just response the number of pages.
+//
+
+post-end:
+
+--------------------------------------------------------------------------------
+Do you understand the commands?

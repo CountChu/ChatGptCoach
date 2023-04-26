@@ -1,0 +1,7 @@
+__pycache__
+*.sublime-project 
+*.sublime-workspace
+sftp-config.json
+.DS_Store
+README.html
+out
