@@ -1,20 +1,22 @@
-I define the commands and describe them in the "//"" comments as below.
+I define commands and describe them in the "//"" comments as below.
 
 //
-// The post-begin command informs you that the title of the document to be posted is TITLE.
+// The doc-begin command informs you that the title of the document will be posted.
+// TITLE is the title of the document.
 //
 
-post-begin: TITLE 
+doc-begin: TITLE 
 
 //
-// The post-pages command means that I post the TITLE document many pages. 
+// The doc-post command posts pages of the document.
 // The N in "Page N" means a page number. E.g., Page 1
 // The N+1 in "Page N+1" means the next page number. E.g., Page2
 // The CONTENT means the content of the page.
-// Please just accept them and don't response them.
+// Please just accept them, don't response them, and don't repeat them.
+// I'll use the command many times.
 //
 
-post-pages:
+doc-post:
 
 Page N
 
@@ -26,11 +28,11 @@ CONTENT
 
 ...
 
-/
-// An example of the first post-pages command:
+//
+// An example of the first doc-post command:
 //
 
-post-pages:
+doc-post:
 
 Page 1
 
@@ -51,7 +53,7 @@ Agenda
 // An example of the second post-pages command:
 //
 
-post-pages:
+doc-post:
 
 Page 3
 
@@ -71,11 +73,11 @@ Agenda
 ●What is OP-TEE? 
 
 //
-// The post-end command informs you that the post is done. 
+// The doc-end command informs you that the post is done. 
 // You just response the number of pages.
 //
 
-post-end:
+doc-end:
 
 --------------------------------------------------------------------------------
 Do you understand the commands?

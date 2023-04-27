@@ -1,0 +1,1523 @@
+[00:06] hello i'm greg melissa principal
+[00:07] engineer at time sis corporation
+[00:10] this may not be jensen's kitchen but
+[00:11] welcome to my office thank you for
+[00:13] joining me as we discuss using opti as a
+[00:16] cryptography engine in your embedded
+[00:17] application
+[00:18] so today um we're going to give you a
+[00:21] little bit of background on opti i'm
+[00:22] kind of assuming that most of you are
+[00:23] familiar with it anyway but let's have a
+[00:25] quick refresher on what it is and why
+[00:27] and then we're going to talk about how
+[00:29] we might add a hardware crypto provider
+[00:30] to opti in order to provide hardware
+[00:32] random number generation and to do uh
+[00:35] hardware crypto acceleration then we're
+[00:37] going to talk about how to actually use
+[00:39] all of those crypto routines from linux
+[00:41] so that we can leverage up these
+[00:42] capabilities
+[00:44] so
+[00:45] as you may have heard the internet of
+[00:47] things is here i mean i guess it's here
+[00:48] every year but it's definitely here now
+[00:51] everything around us is connected you
+[00:52] know all kinds of new gadgets in our
+[00:54] homes have internet connectivity
+[00:57] our industrial systems which really have
+[00:58] always been networked are now available
+[01:00] remotely
+[01:01] you know you can just pull up telnet log
+[01:03] into your local power plant maybe
+[01:05] our medical systems are connected our
+[01:07] cars are connected there's even high
+[01:09] profile examples of a car getting
+[01:11] hijacked through the 4g connection
+[01:13] because there was not a proper isolation
+[01:15] between the infotainment bus and the car
+[01:18] actual drive control bus so
+[01:21] in all of these cases we need to store
+[01:24] secret or immutable data on these
+[01:26] platforms
+[01:27] and we need to secure that data so that
+[01:30] they can't be taken over they can't be
+[01:32] impersonated and they can't be commanded
+[01:34] to behave incorrectly
+[01:36] and we might want to try to do that by
+[01:39] adding some security modules to our
+[01:41] systems so the easiest way to store
+[01:43] things security is to add a hardware
+[01:44] element like we might have an hsm that
+[01:46] we integrate with our device or we might
+[01:48] have a tpm that we integrate with our
+[01:49] device or we might have something even
+[01:51] more cost effective like a little secure
+[01:53] element like an attack 608 from
+[01:55] microchip just put it on the pcb you can
+[01:57] offload your crypto storage too you can
+[02:00] offload your crypto retained so
+[02:01] everything works great however
+[02:03] in our case we would really rather focus
+[02:06] on software solutions or things that are
+[02:08] dedicated inside the soc in order to try
+[02:11] to minimize system cost
+[02:14] so what kind of features
+[02:16] does a typical ssc have that would
+[02:18] enable us to perform these security
+[02:20] operations without needing an external
+[02:22] secure element well a lot of modern socs
+[02:25] feature some sort of tamper detection
+[02:27] and tamper resistance and as part of
+[02:29] that they often incorporate secure
+[02:31] one-time programmable memory now there's
+[02:33] usually not a lot of this memory but
+[02:35] it's definitely enough to store
+[02:37] an rsa key or a couple of keys at
+[02:39] minimum
+[02:41] some of them have some more advanced
+[02:42] features such as transparent dram
+[02:43] detection and basically what that means
+[02:45] is that when you're looking at memory it
+[02:47] pages out to dram automatically and when
+[02:49] it gets brought on die and moved into
+[02:51] sram for local access that's when the
+[02:53] memory is decrypted
+[02:55] and typically the hardware handles this
+[02:57] transparently so that you do a little
+[02:58] bit of configuration and setup at the
+[03:00] beginning but you often don't have a
+[03:02] massive amount of extra work in order to
+[03:04] make it actually work for every
+[03:05] application in your system and then of
+[03:07] course there the harder accelerators
+[03:09] which used to be previously only
+[03:10] accessible off die are now often
+[03:12] available as part of the soc as well
+[03:14] which that makes it make a lot more
+[03:16] sense to try to just keep everything in
+[03:17] house
+[03:19] then apart from soc features we of
+[03:21] course need to have architectural
+[03:22] support and there since we're using arm
+[03:24] processors we're in luck because arm
+[03:26] trust zone has been a part of the
+[03:27] processor design for a very long time
+[03:29] and the key feature of zone that we want
+[03:31] to take advantage of is the ability to
+[03:33] separate the processor execution into a
+[03:35] secure state and a non-secure state and
+[03:38] then depending on which state we're in
+[03:40] isolate different asp different like
+[03:41] regions of memory or different
+[03:43] peripherals so that they're only
+[03:44] available in a secure state for example
+[03:47] so what is opti and how does it fit into
+[03:50] that picture well opti is an open source
+[03:52] implementation of the t standard which
+[03:54] stands for trusted execution environment
+[03:56] and in particular opti slides in
+[03:58] underneath the linux kernel to provide
+[04:00] us a way to manage our secure hardware
+[04:03] without relying on linux
+[04:06] obviously we're all familiar with the
+[04:07] idea of user space applications being
+[04:09] untrustworthy i mean we're going to
+[04:10] write our own application and hopefully
+[04:12] we're going to do a good job but we
+[04:13] might have bugs we might use third-party
+[04:16] applications that have bugs and
+[04:18] ultimately these are going to probably
+[04:19] turn into security vulnerabilities
+[04:21] eventually so we're pretty used to
+[04:22] saying okay we don't trust user space we
+[04:24] have to have secure things that are
+[04:25] managed by the kernel and they're
+[04:27] restricted from access however
+[04:30] the next step of this obviously when you
+[04:32] look at the number of cves that come out
+[04:34] against the linux kernel every year is
+[04:36] what if we don't trust the linux kernel
+[04:38] either i mean you know maybe the core
+[04:39] kernel is good but we have some random
+[04:41] sketchy driver or we have
+[04:43] uh you know a module that we you know
+[04:45] found
+[04:46] you know on google that was last updated
+[04:48] in 2014 but it's the only thing that
+[04:50] supports our hardware so we really need
+[04:52] it for our system well we can't trust
+[04:54] these things obviously and if somehow
+[04:56] that module gets approved then you
+[04:57] actually incorporate into your system
+[04:59] then your linux kernel can get
+[05:01] compromised by an attacker pretty easily
+[05:02] as well so what we want to do then is
+[05:05] move all of our secrets to yet another
+[05:07] location that is even harder to
+[05:09] compromise
+[05:10] and in particular we're going to
+[05:11] leverage the trust zone hardware
+[05:13] features to enforce isolation between
+[05:16] the kernel and opti and therefore keep
+[05:18] our secret data secret
+[05:20] so
+[05:21] why do we want to use a t for this
+[05:23] instead of maybe
+[05:24] running it ourselves or i mean we could
+[05:26] obviously imagine writing a small micro
+[05:28] kernel and stuffing it in ourselves well
+[05:30] t is great for this because there is an
+[05:32] industry accepted
+[05:34] specification is the global platform t
+[05:36] specification so if you write a trusted
+[05:38] application that runs on this t and uses
+[05:41] the t api
+[05:42] then it'll run on any t so
+[05:45] you know we are able to move to another
+[05:47] platform or or whatever down the line as
+[05:49] things change
+[05:51] currently linux supports opti and amdt
+[05:53] as t providers however amdt of course is
+[05:56] only available on x86 platforms so we're
+[05:58] not going to be looking at that and
+[06:00] since we're on arm platforms we're going
+[06:01] to be focusing on using opt itself and
+[06:04] the main features that opti provides are
+[06:06] encrypted persistent storage
+[06:08] cryptography routines and isolation
+[06:10] between trusted applications so it's
+[06:12] going to handle pretty much all of the
+[06:15] very very basic security aspects for us
+[06:18] um and then we're going to combine those
+[06:20] in order to build a richer secure
+[06:22] application on top of it and then
+[06:24] provide that functionality to our
+[06:26] untrusted user space so that it can
+[06:28] request secure actions on our behalf
+[06:32] so now that we we're motivated you know
+[06:33] sufficiently we believe opt is a pretty
+[06:35] good idea let's talk about how we can
+[06:37] actually start building out pieces of it
+[06:39] and start adding functionality to it so
+[06:42] if we're going to try to add opt into a
+[06:43] new platform there's really four steps
+[06:45] the first is the basic platform bring up
+[06:47] if you're using a board that already
+[06:48] supports it then you just kind of go
+[06:50] into yakito and configure it
+[06:52] if you're trying to port it to a new
+[06:53] board then you have a rather extensive
+[06:55] porting task but i'm going to suggest
+[06:57] that that portion is sort of outside the
+[06:58] scope of our discussion
+[07:00] instead we want to just focus on uh the
+[07:03] middle two steps of the process we're
+[07:04] going to talk about bringing up the
+[07:06] hardware rng and we're going to talk
+[07:08] about enabling hardware accelerators
+[07:09] we're going to assume that your platform
+[07:11] already works and we're going to assume
+[07:12] that once you're done here you're going
+[07:13] to go back and enable secure peripherals
+[07:15] that might be specific to your
+[07:16] application because it's kind of beyond
+[07:18] the scope of this and just to give you
+[07:19] an example like a secure peripheral that
+[07:21] you might want is say a smart card
+[07:23] reader because you might want to
+[07:24] exchange
+[07:25] data with it that you don't trust
+[07:27] a linux kernel or a secure keypad reader
+[07:30] for instance a user enters a pin you
+[07:32] wish to do some pin validation but you
+[07:34] can't trust the kernel with seeing what
+[07:36] that pin is because if an attacker
+[07:38] compromises it of course they're able to
+[07:40] extract the user's pin so i want you to
+[07:42] keep that isolated but both of those are
+[07:44] kind of beyond our scope we want to
+[07:45] focus on just the hardware accelerator
+[07:47] enablement
+[07:49] and as we do this i'm going to assume
+[07:51] that you're kind of familiar with the
+[07:53] core components of making changes to
+[07:55] opti so when we're configuring a new
+[07:58] platform we really have sort of two main
+[08:00] pieces of configuration and then just
+[08:01] kind of a an aside about how the build
+[08:04] process works so i'm going to assume
+[08:05] that you understand how conf dot mk
+[08:07] works which is a platform specific
+[08:09] configuration file it stores build
+[08:11] configurations and options it enables
+[08:13] features disables features i'm just
+[08:15] going to sort of assume that you
+[08:16] understand how to change those features
+[08:18] you understand what like the force
+[08:19] option is and all these different things
+[08:21] um
+[08:22] and then i'm also going to assume that
+[08:24] you understand how platform config works
+[08:26] which is the c header file that
+[08:27] typically defines the memory layout for
+[08:29] a new platform it tells us what
+[08:31] addresses peripherals are located at and
+[08:33] it helps opti understand how to set up
+[08:35] the initial memory mapping when it boots
+[08:37] so that it can divide the world into
+[08:38] secure and non-secure peripherals
+[08:42] so our basic plan for approaching this
+[08:44] hardware random number generator driver
+[08:46] is first we're going to want to try to
+[08:47] understand opty's crypto rng api then
+[08:50] we're going to want to implement a
+[08:51] driver that satisfies this api and then
+[08:54] finally we just integrate it into our
+[08:55] build hopefully it'll be a pretty simple
+[08:57] three-step process so let's see how that
+[08:59] pans out the first is that the um when
+[09:02] we look at the crypto rng api we see
+[09:04] that it's only three functions there's
+[09:06] an initialization function crypto rng in
+[09:08] it and that function is responsible for
+[09:10] initializing our state vectors or
+[09:12] configuring our hardware in the case of
+[09:14] a hardware um provider and so forth just
+[09:17] basic configuration um in this case it
+[09:19] receives one argument which is actually
+[09:21] the seed that should be used this is
+[09:23] really only relevant for the
+[09:24] pseudorandom
+[09:25] software driven generators which are
+[09:27] seated
+[09:28] the hardware generator that we're going
+[09:29] to be using of course is not seated so
+[09:30] we can ignore this argument safely next
+[09:32] is crypto rng ad event this is again
+[09:35] another feature that's specific to the
+[09:37] software pseudo-rng this is used for
+[09:39] adding entropy to the rng
+[09:42] and again for a harder device this is
+[09:44] typically not relevant so we don't
+[09:45] actually need to implement this function
+[09:48] finally we have the one function that we
+[09:49] care about which is a crypto rng read
+[09:52] and that allows us to read a specified
+[09:54] amount of random data from hardware into
+[09:57] a user supplied buffer
+[09:59] now
+[10:00] to make this simple api even easier to
+[10:02] work with opti provides weak links to
+[10:04] defaults of all three functions
+[10:07] and in the case of crypto rng read all
+[10:09] that the function does is verify the
+[10:11] parameters so make sure that buffer is
+[10:13] not a null pointer and make sure that
+[10:14] the size makes sense you know it's not
+[10:17] bigger than you could store in memory
+[10:18] and that kind of thing and then it just
+[10:20] calls hardware get random byte
+[10:21] repeatedly in order to actually load the
+[10:23] random data from hardware into memory so
+[10:27] we can present a very simple driver
+[10:29] implementation immediately all we have
+[10:30] to do is implement rng in it and during
+[10:33] initialization what we're going to do is
+[10:36] try to obtain the virtual address for
+[10:38] our physical hardware and it's important
+[10:40] to note that because our
+[10:42] hardware is registered as a secure
+[10:44] peripheral in system in it we need to
+[10:46] specify hey we're looking for a secure
+[10:48] peripheral mapping and then um
+[10:51] the opti and the new configuration it
+[10:53] looks it up in the mmu tables and gives
+[10:56] us the corresponding virtual address for
+[10:58] our hardware random number generator
+[11:01] and then of course like i said we have
+[11:02] to implement hardware get random byte
+[11:04] and in that case we're just simply going
+[11:06] to read one byte of data from the
+[11:07] peripheral at a time
+[11:08] now if your peripheral say returns four
+[11:11] bytes at once or more than that you may
+[11:14] wish to re-implement the entire crypto
+[11:16] rng read function yourself so that you
+[11:19] can manage the hardware state more
+[11:20] effectively
+[11:21] if you were to make one call to read
+[11:23] four bytes but only use one byte each
+[11:24] time that kind of becomes inefficient
+[11:26] and depending on the speed of your
+[11:27] hardware random number generator it
+[11:29] could become a problem for the
+[11:30] application so you may wish to do some
+[11:32] of that management yourself but the
+[11:34] simplest implementation looks pretty
+[11:35] much like this
+[11:36] so with the implementation done what
+[11:38] else do we need to do to configure our
+[11:40] build to use it well obviously we got to
+[11:42] add our hardware rng addresses to
+[11:44] platform config and then the big step is
+[11:47] that we need to disable the software
+[11:48] random number generator and switch it
+[11:50] over to hardware
+[11:52] if we turn off the cfg with software g
+[11:55] option then the build system will
+[11:57] automatically switch over to the
+[11:58] hardware rng framework and then all we
+[12:00] have to do is um enable our driver that
+[12:04] implements those three functions that we
+[12:05] mentioned before it'll get linked
+[12:07] incorrectly and everybody will be very
+[12:09] happy
+[12:10] and of course just for reference i just
+[12:12] want to say this is you know how you
+[12:14] might register your hardware rng's
+[12:16] physical address with the mmu
+[12:19] as a secure mapping rather than a
+[12:21] non-secure mapping or a shared mapping
+[12:23] or anything like that
+[12:26] so having implemented the hardware
+[12:27] random number generator now we're
+[12:29] feeling pretty confident we're ready to
+[12:30] just dive into implementing a full
+[12:32] crypto accelerator and we're probably
+[12:34] going to approach this pretty much the
+[12:35] same way right so we start off by diving
+[12:38] into crypto.c and looking at what the
+[12:39] crypto api is
+[12:41] and when we dig into this function we
+[12:43] find that symmetric keys hashes and macs
+[12:46] all work one way and then the asymmetric
+[12:48] keys kind of all work uniquely so if you
+[12:51] want to implement an rsa accelerator it
+[12:53] has its own api and its own flow if you
+[12:56] want to implement a dsa accelerator or
+[12:58] an ecc accelerator each of those have
+[13:00] their own unique flows
+[13:02] because of the great amount of
+[13:03] variability in the asymmetric operations
+[13:06] we're going to focus just on the
+[13:07] standard ones that typically have a
+[13:08] single api and unfortunately the
+[13:11] asymmetric ones are kind of left as an
+[13:12] exercise for you
+[13:14] my experience working with implementing
+[13:15] an rsa accelerator is that it would
+[13:18] basically be a presentation the same
+[13:20] size as this one just to talk about the
+[13:22] rsa system uh it's rather unfortunate
+[13:24] there's a lot of conceptual crossovers
+[13:26] so once you understand this you'll be
+[13:27] good to dive in but it is unfortunate a
+[13:30] lot of extra detail
+[13:32] so given that i've said that all three
+[13:34] of these work the same way how do they
+[13:35] work well the first thing that we want
+[13:37] to do like for example when we're going
+[13:38] to hash some data first thing we need to
+[13:40] do is allocate a hashing context and
+[13:43] then we want to initialize that context
+[13:46] which
+[13:47] in the case of some hashes that involve
+[13:49] keys would involve setting a key or if
+[13:51] we were doing a symmetric key operation
+[13:52] that would be where we'd set the
+[13:53] symmetric key we would set an
+[13:55] initialization vector those kinds of
+[13:56] things then we load data into our
+[13:59] algorithm in the update step and we can
+[14:01] call that as many times as we want for
+[14:02] as much data as we have and then we use
+[14:05] the final method in order to get our
+[14:07] hash result or get our mac result or in
+[14:09] the case of a cipher in order to pad out
+[14:11] our data and obtain our final data block
+[14:13] if necessary and then once we're done
+[14:15] everything we call uh the appropriate
+[14:18] crypto hash free in order to release the
+[14:20] memory associated with the crypto
+[14:21] hashing context in order to make sure
+[14:23] that you know we don't have a memory
+[14:25] leak we don't run out of ram on our
+[14:26] system
+[14:28] so
+[14:29] how do these functions work internally
+[14:30] when we call crypto hash init
+[14:33] on a hash context what happens is that
+[14:36] it looks up this crypto hash ops struct
+[14:38] and then calls the init function pointer
+[14:40] on an obstruct
+[14:41] when we call crypto hash update it does
+[14:44] the same thing looks up the obstruct
+[14:46] looks up the update pointer calls the
+[14:48] update function so it seems like in
+[14:50] order to implement a hardware
+[14:52] accelerator all we need to do is fill
+[14:54] out one of these structs crypto hash ops
+[14:56] with function pointers pointing to our
+[14:58] functions that actually perform those
+[15:00] operations using the hardware and then
+[15:02] get the cryptosystem in order to do that
+[15:04] or get the cryptosystem to use that
+[15:06] obstruct in order to integrate the
+[15:08] hardware accelerator
+[15:09] uh it seems pretty easy however how many
+[15:11] of you noticed that there was no alec
+[15:13] function in the crypto
+[15:15] ops struct
+[15:17] so
+[15:18] this allocate step has to happen somehow
+[15:20] separately and somehow the crypto api
+[15:23] has to be informed that it should use a
+[15:25] different allocator in order to
+[15:27] prepare a hash context for our hardware
+[15:29] so it looks like we're going to have to
+[15:31] actually look at the code to figure out
+[15:32] exactly how that works because it's you
+[15:34] know it doesn't seem to be clear from
+[15:35] the api
+[15:37] so this is a snippet of crypto hash alex
+[15:40] ctx which is in the opti kernel i've
+[15:42] reformatted a little bit to try to make
+[15:44] it better on the slide but what we have
+[15:46] here is that the first thing it does is
+[15:48] it calls this drive crypt alex ctx
+[15:50] function and then depending on the
+[15:52] return value from that function it
+[15:54] either succeeds or it seems to fall
+[15:56] through and per algorithm try to
+[15:58] allocate an algorithm-specific context
+[16:01] so let's see so so what does drive crypt
+[16:03] mean it turns out that drive crypt is
+[16:05] the specific subsystem or mechanism that
+[16:07] opti already contains for integrating a
+[16:10] hardware accelerator it allows you to
+[16:12] register one
+[16:14] accelerator per family of operations so
+[16:16] you'll have one hash accelerator that's
+[16:18] supposed to handle every type of hash
+[16:20] operation you have one mac accelerator
+[16:23] that's supposed to handle every type of
+[16:24] mac operation one symmetric key
+[16:26] accelerator and then once you get to the
+[16:28] asymmetric keys you have one for rsa one
+[16:30] for ecc and so forth and again each of
+[16:32] those are kind of unique
+[16:34] in order to add a new drivetrack
+[16:36] accelerator luckily we don't need to
+[16:37] change the cryptocore at all all we need
+[16:39] to do is let drivecrypt know that it
+[16:42] should use us to handle that operation
+[16:44] and even better
+[16:45] if our hardware doesn't support
+[16:47] everything like let's say we have a
+[16:48] hardware accelerator that only does show
+[16:50] one and shot two
+[16:52] and someone needs an md5 for some reason
+[16:55] um it will implement a software fallback
+[16:58] and we won't need to actually handle
+[17:00] that ourselves in hardware which is
+[17:02] great because it simplifies the driver
+[17:03] implementation to not need to worry
+[17:05] about the fallback quite a lot
+[17:08] so what does the overall flow look like
+[17:10] well we implement our hardware driver
+[17:12] and then during our hardware
+[17:13] initialization routine which is one of
+[17:15] the in it calls in opti where we want to
+[17:16] configure everything else or configure
+[17:18] everything we're going to call drive
+[17:20] crypt register and in order to inform it
+[17:22] to use us to handle hashing operations
+[17:25] and then later when a user is using the
+[17:27] crypto api inside the kernel they call
+[17:29] alec or they call init or they call
+[17:31] update
+[17:32] that will then flow through drive crypt
+[17:34] and reach our hardware driver at the end
+[17:36] of the day so all we have to do is
+[17:39] implement those functions just like we
+[17:40] thought before call drive crypt register
+[17:42] and that will hook us up to the entire
+[17:44] subsystem
+[17:46] as far as registration goes we have a
+[17:49] couple of different scenarios again for
+[17:51] hashes and macs the registration is very
+[17:53] easy you provide simply an allocator
+[17:55] function that returns a crypto hash
+[17:58] context or a crypto mac context
+[18:01] if we're doing a symmetric key it
+[18:02] actually has to return a struct of crypt
+[18:05] or of drive crypt cipher which
+[18:07] is a little bit different but it turns
+[18:10] out the drive crypt
+[18:11] modifies the parameters to symmetric
+[18:13] keys in order to make it easier to work
+[18:15] with with hardware it sort of has like
+[18:17] an intermediate interface in the middle
+[18:18] so rather than just directly register
+[18:20] the allocator we actually register
+[18:23] another obstruct that stands in between
+[18:25] the two and of course the asymmetric
+[18:27] ones are fully unique again so
+[18:29] unfortunately we can't actually deal
+[18:30] with those
+[18:32] so um
+[18:34] the initialization and registration is
+[18:35] pretty simple um i just wanted to pop
+[18:37] this up here so you're going to have
+[18:40] your hardware initialization that you
+[18:41] will do manually and that will be done
+[18:43] in whatever normal way you might want to
+[18:45] do it um i'm not going to give any like
+[18:47] simplified examples or whatever you're
+[18:48] just going to have all your regular code
+[18:50] then once everything is ready you're
+[18:52] just going to call drivecrypt register
+[18:53] hash with your hardware hash allocator
+[18:55] function pointer and i wanted to mention
+[18:57] how the initialization works so opti has
+[19:00] multiple init levels um there's like an
+[19:02] early in it and early late in it a
+[19:04] service in its service late and a driver
+[19:06] in it driver late in it and so forth
+[19:08] however all of those internet calls
+[19:10] essentially happen in sequence so any
+[19:12] level one runs into level two then three
+[19:14] and four and so forth um all of that
+[19:16] happens after the core board
+[19:17] configuration so if you try to
+[19:20] initialize your hardware here hashes
+[19:22] will only be available after this point
+[19:25] if you need hashes earlier in the boot
+[19:26] cycle
+[19:27] one good example is if you're loading a
+[19:30] trusted application before all of the
+[19:32] drivers are ready you may need to
+[19:34] manually insert your call to your
+[19:37] hardware initialization function earlier
+[19:39] in the boot flow it's a little bit
+[19:40] beyond the scope of the presentation
+[19:42] it's a little bit of an advanced topic
+[19:43] but um just be aware that this is
+[19:46] probably good enough but if you need a
+[19:47] special case you may need to move this
+[19:49] actually to even earlier in optis boot
+[19:51] flow
+[19:52] so what does our hash allocator do
+[19:55] well the first thing that it needs to do
+[19:57] is it needs to make sure that the
+[19:58] hardware supports the algorithm like i
+[20:00] said we have automatic software fallback
+[20:02] so all you really need to do is notify
+[20:04] drivecrypt that your hardware does not
+[20:06] implement this algorithm and it should
+[20:08] do the software fallback it'll take care
+[20:10] of everything else uh beyond that all
+[20:12] you do is allocate the hash context and
+[20:14] configure the obstruct just like we
+[20:16] thought um so i also do want to
+[20:18] highlight though how the hardware
+[20:20] context might look here so the crypto
+[20:22] hash context is fixed of course however
+[20:25] the crypto hash update and final
+[20:26] functions do not include any additional
+[20:30] information so
+[20:32] in particular they don't include the
+[20:33] algorithm id for what you're doing and
+[20:35] they don't have any extra data so what
+[20:37] you might wish to do is embed the crypto
+[20:39] hash context struct into your own struct
+[20:41] and then store some extra information
+[20:43] such as which algorithm you're
+[20:44] implementing you might have a hardware
+[20:46] accelerator that expects md5 data in one
+[20:49] register and expects sha data in another
+[20:51] register i've seen some platforms like
+[20:53] that
+[20:54] especially once you're getting into
+[20:55] symmetric key operations you might have
+[20:56] aes data in one register you might have
+[20:58] des data in another register for example
+[21:02] and of course if your platform supports
+[21:04] say multiple instances of an accelerator
+[21:07] then you also need to keep track of
+[21:08] which one you're actually using so you
+[21:10] might want to store the virtual address
+[21:11] that is the base address for your
+[21:13] particular accelerator instance as part
+[21:15] of your hash context and then like i
+[21:17] mentioned you just have to fill out the
+[21:18] hash obstruct
+[21:20] make sure that it gets passed to the
+[21:21] crypto api and you're good to go
+[21:24] um so once we've finished our driver and
+[21:27] we're ready to integrate it with the
+[21:29] build system we need to make sure to go
+[21:31] in enable the drive crypt um feature
+[21:34] which is the cfg crypto driver option
+[21:36] and then
+[21:37] each subsystem has its own support layer
+[21:39] that you have to manually add so you'll
+[21:41] need to add a drive hash or a drive mac
+[21:43] or drive cipher and then
+[21:46] even more if you want to do asymmetric
+[21:48] ciphers you're going to need to enable
+[21:49] the specific asymmetric cipher that
+[21:51] you're supporting hardware acceleration
+[21:53] for so rsa has its own option ecc has
+[21:55] its own option and so forth
+[21:57] and i've omitted those because there's
+[21:58] actually there's too many options and
+[22:00] too many different possibilities it also
+[22:01] kind of changes rapidly so you kind of
+[22:04] really need to just look at the
+[22:05] repository and see what's available in
+[22:07] order to find out what to enable for
+[22:08] your asymmetric key cipher
+[22:12] so
+[22:12] now that our hardware accelerator is
+[22:14] ready to go we've got it fully
+[22:15] integrated we have to actually figure
+[22:17] out how we're going to plan on using
+[22:18] this thing from user space so uh let's
+[22:21] take a look at how we might do that from
+[22:23] linux so
+[22:25] our first option is going to be to
+[22:27] implement a fully custom library that
+[22:29] just directly talks to opti and does our
+[22:31] layer this is kind of the most obvious
+[22:33] point and and we're going to spend the
+[22:34] most of our time then we're going to
+[22:36] talk about how we might integrate it
+[22:37] with the linux kernel how we might
+[22:39] implement it with openssl or how we
+[22:41] might implement it with or how we might
+[22:43] implement a cryptokey api to make it
+[22:45] pkcs11 compliant so we can use it with
+[22:47] some other applications and i really
+[22:49] want to highlight in this section there
+[22:51] are going to be a number of code
+[22:52] examples however those code examples are
+[22:55] stripped down just to highlight a
+[22:57] specific aspect of the api or a specific
+[23:00] feature that i want to talk about they
+[23:01] don't have complete error checking they
+[23:03] don't have complete parameter validation
+[23:05] both of which are very important for
+[23:06] building a successful system so if
+[23:08] you're trying to build your own you've
+[23:09] got to make sure you add those things or
+[23:11] you'll run into a lot of problems down
+[23:12] the line
+[23:15] so
+[23:16] let's start with a high level picture of
+[23:18] how our application is going to look
+[23:20] when we're using our opti crypto
+[23:22] routines so we've got our non-secure
+[23:24] user space where we have implemented our
+[23:26] application you know it's it's our iot
+[23:28] device that measures temperature and
+[23:30] reports it across the internet for
+[23:32] example
+[23:34] we have a wrapper library that we have
+[23:36] to implement ourselves which is going to
+[23:37] provide an api for accessing our
+[23:40] hardware crypto elements and then all of
+[23:42] that's going to get transported into
+[23:44] opti using the t client which is a
+[23:46] standard part of the opti software so we
+[23:48] don't have to implement that part
+[23:49] ourselves luckily now once we're on the
+[23:51] opti side the kernel will handle
+[23:54] everything up to the point where it will
+[23:55] call ta invoke command entry point
+[23:58] within the trusted application that we
+[23:59] write now this function is basically
+[24:02] where we receive our commands from the
+[24:03] user and we're going to have to figure
+[24:05] out how to handle them and so in
+[24:06] particular we might end up eventually
+[24:08] calling t cipher update for instance and
+[24:10] then that will go back into the opt
+[24:12] kernel and actually do the cryptographic
+[24:14] operation using the hardware accelerator
+[24:16] that we defined earlier through the
+[24:18] crypto api the drive crypt api and then
+[24:20] finally our hardware accelerator
+[24:23] so you may ask well what is a trust
+[24:25] trusted application we haven't talked
+[24:26] about that yet
+[24:28] a ta is basically a user space
+[24:31] application from the perspective of opti
+[24:33] it's still a secure application you
+[24:35] still verify exactly that the
+[24:37] application is what you expect it to be
+[24:38] that it was written by you that you
+[24:40] trust in everything and it runs within
+[24:42] the secure world and has access to
+[24:44] secure resources
+[24:46] the trusted applications only have
+[24:47] access to the global platform t internal
+[24:50] core api they don't have access to say
+[24:52] libsy even for instance and they don't
+[24:54] have access to posix system calls they
+[24:56] really only have a limited feature set
+[24:58] that was specifically designed in order
+[25:00] to implement these secure applications
+[25:02] and
+[25:03] typically the secure applications are
+[25:05] used to handle tasks on behalf of linux
+[25:08] which is done using a basically a remote
+[25:10] procedure called kind of interface where
+[25:12] the linux user space will configure a
+[25:14] bunch of data in shared memory and then
+[25:16] it will invoke opti which will look at
+[25:18] shared memory
+[25:19] parse the data there and then it will
+[25:20] call the trusted application with the
+[25:22] parameters that were given to it then
+[25:24] once it's done it returns a result in
+[25:26] shared memory and linux is able to look
+[25:28] at it and see what happened
+[25:31] so
+[25:33] as we're doing this we're going to need
+[25:34] to do cryptographic operations so what
+[25:36] is a t operation well everything in opti
+[25:39] is actually stored within the kernel and
+[25:41] within the trusted applications the user
+[25:43] space only has access to an opaque
+[25:45] handle so previously where we would call
+[25:48] uh crypto hash alec ctx
+[25:51] and that would give us a pointer
+[25:52] directly to the hash context now we're
+[25:54] going to receive an opaque handle that
+[25:57] points to memory that's allocated kernel
+[25:59] side rather than in user space um
+[26:01] otherwise the operations are basically
+[26:03] the same thing
+[26:04] except that they need to be associated
+[26:07] with a key that is stored in a t object
+[26:10] rather than a plain buffer pointer
+[26:12] so the next obvious question is well
+[26:14] what's a t object a t object just like
+[26:16] an operation is an opaque reference to
+[26:18] data that's stored kernel side and t
+[26:20] objects come in two varieties so there
+[26:22] are persistence objects and there are
+[26:24] transient objects
+[26:25] transient objects are ones that exist
+[26:28] only in ram and only for the lifetime of
+[26:30] the trusted application so if there's
+[26:32] ever an error and the trusted
+[26:34] application gets killed or panicked the
+[26:36] transient objects are immediately wiped
+[26:38] and this is useful because it prevents a
+[26:39] kind of attack where you might want to
+[26:41] crash the application and then leave
+[26:43] some data sitting in memory even though
+[26:46] you know it hasn't been reclaimed yet
+[26:47] for example and it's sitting there and
+[26:48] you're like i'm going to crash it and
+[26:50] then i'm going to try to read some
+[26:50] physical memory and pull out a key that
+[26:52] can't happen with opti luckily because
+[26:55] it will wipe the keys as soon as the
+[26:56] transient object is deallocated
+[26:59] you know either intentionally or because
+[27:01] the application crashed
+[27:03] the objects of course
+[27:05] therefore should be used for
+[27:06] cryptographic keys because it adds
+[27:08] another layer of you know security and
+[27:10] fallback where
+[27:11] as soon as your application ends the
+[27:12] keys get wiped
+[27:14] however sometimes we do need to store
+[27:16] things long term and so to do that we
+[27:18] would use a persistent object and the
+[27:20] persistent object basically allows us to
+[27:22] encrypt information and then write it
+[27:24] out to long-term storage like an emmc
+[27:27] the persistent objects provide both
+[27:29] encryption to secure the data and they
+[27:32] provide integrity so that you can verify
+[27:34] that the data was written that you read
+[27:36] back is exactly what you wrote basically
+[27:38] they detect data corruptions on the
+[27:40] encrypted data of course
+[27:42] and these are typically stored on the
+[27:43] emmc or
+[27:45] really through whatever file system
+[27:47] linux provides for you which is great
+[27:50] the persistent objects are also
+[27:52] automatically restricted to a single
+[27:53] trusted application by the opti kernel
+[27:56] automatically and data
+[27:58] by default cannot be shared however if
+[28:00] you really wanted to there is a
+[28:02] mechanism that you could implement to
+[28:04] share persistent objects between
+[28:05] different trusted applications
+[28:08] so
+[28:10] how does the
+[28:12] interface between linux and the ta work
+[28:14] in a little bit more detail i mentioned
+[28:16] earlier that it was an rpc style
+[28:17] interface and basically what that
+[28:19] amounts to is each um
+[28:22] remote procedure that we can call is
+[28:24] identified by a command number it
+[28:26] accepts up to four arguments which is
+[28:28] it's an opti implementation detail
+[28:30] rather than a part of the standard and
+[28:31] then each of those arguments of course
+[28:33] it can be an integer or a buffer with a
+[28:35] well-defined length can be an input and
+[28:36] output or it can be data that's
+[28:38] originally used as an input and then
+[28:39] modified by opti in place that kind of
+[28:41] thing
+[28:43] so how does a minimal uh implementation
+[28:46] of a ta interface actually look well uh
+[28:50] it comes down to one function that we
+[28:51] register with the kernel as part of the
+[28:54] trusted application structure and
+[28:57] in particular it's typically called ta
+[28:59] invoke command entry point and an
+[29:01] example one like this might be one that
+[29:03] has two commands one to do aes
+[29:05] encryption and one to do aes decryption
+[29:07] so the first step is we figure out which
+[29:09] command we've received and forward to
+[29:11] the appropriate function and then that
+[29:13] function is going to do a little bit of
+[29:14] parameter validation so like i mentioned
+[29:17] opti typically provides four parameters
+[29:19] for a function so in this case we can
+[29:21] say oh we expect an initialization
+[29:22] vector we expect an input buffer and we
+[29:25] expect an output buffer and if we don't
+[29:27] see those things in that order you know
+[29:29] i mean we can't verify the semantics of
+[29:30] it but we can at least verify that these
+[29:32] are input buffers and these were output
+[29:33] buffers and then if that succeeds then
+[29:37] we can take our aes key that was stored
+[29:40] secretly already inside the application
+[29:42] pass it to our aes encryption key and
+[29:43] say hey please operate on this data
+[29:46] and then our aes encryption key might
+[29:47] look something or our as encryption
+[29:49] routine
+[29:50] might look something like this
+[29:52] it's going to allocate a new operation
+[29:55] it'll associate our key with the
+[29:56] operation initialize it with our iv do
+[29:59] the operation and then return the result
+[30:01] to the user uh and again i keep bringing
+[30:04] this up but we're not doing any error
+[30:06] checking or parameter validation here so
+[30:08] what happens if there's a problem with
+[30:10] one of the parameters well opti is
+[30:12] designed to try to save you from making
+[30:14] a mistake
+[30:15] obviously you need to do this yourself
+[30:17] and we'll talk about why but but if you
+[30:19] just forget to do everything and you
+[30:21] pass in an input buffer that's seven
+[30:23] bytes long for example or you're passing
+[30:25] an iv that's seven bytes long because
+[30:26] now that would be pretty invalid for aes
+[30:28] 128. um
+[30:30] the t api is not going to do something
+[30:32] inappropriate instead it's going to say
+[30:34] hey this buffer is seven bytes long
+[30:36] that's an error and then it will cause a
+[30:38] panic immediately which will kill your
+[30:40] ta it'll delete your transient objects
+[30:42] and everything and just fall back to
+[30:44] user space and then the user would have
+[30:45] to start over completely
+[30:47] this is often not what you want but it
+[30:50] is a fail safe at the end of the line so
+[30:52] typically you want to do the error
+[30:53] checking yourself and prevent those
+[30:55] kinds of things by reporting errors to
+[30:56] the user and then they can be like oh
+[30:58] whoops you know my id was too short i'll
+[31:00] give you a better one next time whatever
+[31:02] that kind of thing um
+[31:05] but it will try to save you if you if
+[31:06] you forget but please don't rely on that
+[31:10] so now that we've seen how uh the
+[31:12] trusted applications are arranged how we
+[31:15] call a command how that eventually ends
+[31:17] up interacting with the user space
+[31:19] crypto api uh which of course calls up
+[31:21] the kernel and uses our hardware let's
+[31:23] try to combine all of this in order to
+[31:25] build a secure storage system so we
+[31:27] mentioned at the start of the
+[31:28] presentation that our goal is to build a
+[31:30] software only secure element that
+[31:32] provides the same kind of features that
+[31:34] a hardware secure element does in order
+[31:36] to lower our system cost so to do that
+[31:38] we're basically going to try doing
+[31:40] something like organizing our data into
+[31:41] slots where each slot stores the data
+[31:43] persistently and we have multiple types
+[31:46] of data so we might have an aes key in
+[31:48] one slot we might have a public key
+[31:50] certificate in another slot we might
+[31:51] have an rsa key in another slot you know
+[31:53] all those things and then each one has
+[31:56] operation support that's specific to the
+[31:58] type of slot
+[31:59] that we have
+[32:01] so
+[32:02] at a high level this is what the
+[32:03] application flow might look like we're
+[32:05] going to have a user space library
+[32:07] that's untrusted code it's going to
+[32:09] provide a basic range of functions for
+[32:11] accessing our our key storage system and
+[32:14] it'll do basic operations like opening a
+[32:16] slot or closing a slot it might support
+[32:18] using a slot to encrypt data or decrypt
+[32:20] it and of course finally for
+[32:22] actually adding our data to the system
+[32:25] we will also need endpoints to inject a
+[32:27] new key or to generate a key within a
+[32:29] slot for instance if we're building
+[32:30] session keys for tls or something we'll
+[32:32] need functions for those kinds of things
+[32:34] as well
+[32:35] in any case all of those functions get
+[32:37] routed into that ta invoke command entry
+[32:39] point function which then will have to
+[32:41] fan back out based on the command was
+[32:44] get that was given so if we receive an
+[32:46] open command it's going to go to the
+[32:48] slot definition pull up the slot
+[32:50] operation struct that we have and find
+[32:52] the open function pointer and then if
+[32:53] it's valid it'll call it and you can do
+[32:55] this the same thing for any other
+[32:56] operation so
+[32:58] even even more like important is if you
+[33:01] try to call encrypt on say a certificate
+[33:04] slot then you your implementation of
+[33:07] invoke when it's delegating to the
+[33:09] encrypt function pointer should detect
+[33:10] hey there's no encrypt function here
+[33:12] that's an error and obviously it's our
+[33:14] slot type doesn't support encryption so
+[33:16] we can't do that right
+[33:17] um and finally
+[33:19] the reason we want to use this array of
+[33:21] slot ops is that each type of slot could
+[33:24] store different data therefore support
+[33:25] different operations so
+[33:27] if we imagine something that stores an
+[33:30] aes key that might be a transient data
+[33:32] object we're just going to
+[33:34] dump our ask directly on a transient
+[33:35] object use it for operations and delete
+[33:37] it if we have something that stores a
+[33:39] certificate we might actually not want
+[33:42] that on an object because there's no
+[33:43] certificate operations within the crypt
+[33:45] within the opti api instead we're going
+[33:48] to have to do some of our certificate
+[33:49] interface stuff ourselves so we might
+[33:51] want to have just a regular buffer
+[33:53] pointer that we copy our certificate
+[33:55] into
+[33:56] or you know if we're working with the
+[33:58] payment industry we might have some
+[34:00] features that are not yet part of the
+[34:01] opti standard so in particular if we're
+[34:03] doing something like device unit key for
+[34:05] transaction stuff then we need to um you
+[34:08] know when we load our data from
+[34:10] persistent storage we have to initialize
+[34:11] our transaction counter we have to
+[34:13] calculate the correct key serial number
+[34:15] we have to make sure that our future key
+[34:17] registers are populated correctly so we
+[34:20] typically have different
+[34:21] responsibilities for each type of open
+[34:24] operation based on what the slot is
+[34:26] actually going to be used for and what
+[34:27] kind of data it stores
+[34:30] so
+[34:31] i'm going to give you a couple of
+[34:32] examples here i mean we could go
+[34:33] straight into encryption and decryption
+[34:35] however we've sort of seen that workflow
+[34:37] a lot right like when you want to
+[34:38] encrypt something you call encrypt and
+[34:40] that will call encrypt and then that
+[34:42] will call encrypt again and again and
+[34:43] again until eventually you end up the
+[34:45] hardware accelerator and actually does
+[34:46] the encryption so we're not going to
+[34:47] talk about that i will however talk
+[34:49] about some of the details of opening a
+[34:51] slot and closing a slot because that's
+[34:53] very important um so
+[34:56] it's important enough that
+[34:58] i want to to mention that all of those
+[34:59] operations are actually separate from
+[35:02] your regular slot operations
+[35:04] when we go to open a slot
+[35:06] we
+[35:07] first obviously we're going to allocate
+[35:08] resources and whatever and then we're
+[35:10] going to read our persistent data from
+[35:13] the file system not every uh slot is
+[35:15] going to have persistent data but for
+[35:17] all the ones that do then we allow them
+[35:18] to initialize themselves based on that
+[35:20] persistent data so if you're thinking
+[35:22] about it in terms of the example of the
+[35:24] examples i gave on the previous slide a
+[35:26] transient slot might have a new function
+[35:27] that allocates a transient object and
+[35:30] then the persistent object doesn't exist
+[35:32] so we're going to see an item not found
+[35:34] error and that also lets us skip the
+[35:36] initialization function
+[35:38] and this is really what i wanted to
+[35:39] highlight is that item not found is not
+[35:42] necessarily always an error in opti you
+[35:45] might simply have something that doesn't
+[35:46] have persistent backing
+[35:48] however you do need to carefully think
+[35:50] about what that means
+[35:52] it could also mean that you're bringing
+[35:54] up a device for the first time before
+[35:56] you've done your manufacturing
+[35:57] configuration and you actually need to
+[35:59] load data into those persistent slots in
+[36:01] the first place so typically in order to
+[36:03] determine whether a slot is populated or
+[36:05] not you can't rely on item not found by
+[36:08] itself you would also need to store
+[36:10] something separately for example
+[36:12] insecure one-time programmable memory
+[36:14] that indicates whether manufacturing
+[36:16] provisioning has been completed for this
+[36:18] device or not and then if provisioning
+[36:20] has been completed item not found could
+[36:22] be an error if provisioning has not been
+[36:24] completed then item not found is
+[36:26] probably not an error because we're
+[36:27] about to do our initial key load into
+[36:28] the slot now you could of course also
+[36:30] implement a custom routine that skips
+[36:32] this step but it's nice to have things
+[36:34] sort of follow a standard flow
+[36:36] and then
+[36:38] the other important thing to look at is
+[36:39] how do we write a slot correctly so um
+[36:42] like i mentioned before
+[36:44] if we're storing a new certificate or
+[36:46] restoring um a new key that we've
+[36:48] generated
+[36:49] or we've updated our future key
+[36:51] registers and we want to prepare for our
+[36:53] next transaction
+[36:54] it's very important that we don't
+[36:55] corrupt the data on our device so a
+[36:58] naive solution would be well i delete
+[37:00] the previous object and then i write a
+[37:02] new persistent object in its place
+[37:04] however if your system loses power in
+[37:06] the middle suddenly your slot gets
+[37:08] cleared and you're back to the previous
+[37:09] slide where you're trying to figure out
+[37:10] what does it mean when the persistent
+[37:12] object is not found does it you know
+[37:14] what kind of error is that
+[37:15] luckily opti provides a way to do an
+[37:18] atomic object replace if you supply t
+[37:21] data flag overwrite to the flags when
+[37:24] you create a persistent object
+[37:26] opti will atomically swap the two so
+[37:29] what it does in practice is that it
+[37:30] writes the second object next to the
+[37:32] first one and then swaps the pointer and
+[37:34] this guarantees that if your system has
+[37:36] a power loss you will either read the
+[37:38] previous object or the new object but
+[37:41] never something in between you'll never
+[37:43] have half of each you'll never have an
+[37:44] item not founder you'll just get one or
+[37:46] the other and that's all
+[37:49] i just want to highlight that because
+[37:50] that's kind of important for making sure
+[37:52] that you don't accidentally break
+[37:54] yourself because you have a power loss
+[37:56] or something benign that might happen
+[37:57] during operation like that you know not
+[37:59] even worrying about an actual attack
+[38:02] um so having talked about how we might
+[38:04] organize things and how our api looks
+[38:06] well
+[38:07] what is left in order to actually build
+[38:08] out a trusted application really it's
+[38:10] it's a bunch of routine tasks
+[38:12] so
+[38:14] i mentioned that there's an obstruct for
+[38:16] each slot of course and that's going to
+[38:17] support a bunch of different operations
+[38:20] you really have to go through and
+[38:21] implement all of those yourselves
+[38:22] obviously like i said there's encryption
+[38:24] there's decryption it calls encrypt it's
+[38:26] it's not that interesting uh it's not
+[38:28] nearly as interesting as opening or
+[38:30] writing the slots which have some very
+[38:31] specific pitfalls associated with them
+[38:35] you'll obviously also need to fill out
+[38:36] the invoke function which just is just a
+[38:38] large switch statement you've got to
+[38:39] check for each command number forward to
+[38:41] the appropriate handler check for the
+[38:42] next commander hand next command id
+[38:46] forward to the appropriate handler and
+[38:47] so forth and then as i keep mentioning
+[38:49] you have to do all of the error checking
+[38:50] and parameter validation because it's
+[38:52] very important to do all of that in
+[38:53] order to make sure that your application
+[38:55] is robust against either programming
+[38:58] mistakes or malicious attempts to use it
+[39:01] after you've got all the core pieces in
+[39:02] place you have to approach the one-time
+[39:04] programming support for manufacturing
+[39:06] somehow you're going to need to
+[39:08] initialize your key store and
+[39:11] i've seen a couple of different
+[39:12] approaches one is to load one version of
+[39:14] the trusted application for
+[39:15] manufacturing and load a different one
+[39:17] for release
+[39:18] and then you know the manufacturing
+[39:20] version supports key injection but the
+[39:21] release version does not another option
+[39:23] is to use the sltp like i mentioned
+[39:26] before and have a flag
+[39:28] that indicates that programming has been
+[39:30] done and if that flag is set you don't
+[39:32] allow new keys to be loaded you know you
+[39:34] reject all those operations as a
+[39:35] security violation and then finally
+[39:38] after you've done your manufacturing
+[39:40] enabling you have to decide how to
+[39:41] handle one more error this is the t
+[39:43] error corrupt object and to do that you
+[39:46] kind of have to think beyond an item not
+[39:48] being found what does it mean if an item
+[39:50] is corrupt
+[39:51] well
+[39:53] to understand that it helps to think
+[39:54] about how this works right so we have a
+[39:56] key that's stored in sotp and then based
+[39:59] on that key we're going to try to
+[40:00] decrypt our objects so if we receive a
+[40:03] corrupt object error either the source
+[40:05] data for the object was corrupted or the
+[40:07] key was corrupted
+[40:09] and
+[40:10] that could mean that a hardware failure
+[40:12] has happened in which case the unit
+[40:13] needs to be brought in and serviced or
+[40:15] it could mean that someone has
+[40:16] intentionally tried to tamper with our
+[40:18] unit and so you've got to kind of think
+[40:20] about both of these possibilities and
+[40:22] then decide you know does this mean that
+[40:23] we should shut down operations
+[40:25] immediately does this mean we delete
+[40:26] everything and break ourselves you know
+[40:28] does this mean we try to notify somebody
+[40:30] you know exactly what happens it's kind
+[40:32] of up to exactly what your situational
+[40:35] requirements are for your project as to
+[40:37] how you should handle that kind of an
+[40:38] error
+[40:40] so having finished the trusted
+[40:42] application we can move forward to the
+[40:43] linux user space application
+[40:46] the user space application is very
+[40:48] simple luckily it's going to mirror the
+[40:49] invoke structure of ta invoke command
+[40:52] entry point and the user space library
+[40:54] is actually very very simple it's
+[40:55] basically one function call is going to
+[40:57] set up the correct command number and
+[40:59] it's going to call the t client to
+[41:01] invoke that function within rta and all
+[41:03] of them work exactly the same way so
+[41:05] it's not particularly interesting
+[41:06] exciting um it's optional whether you do
+[41:09] the parameter validation here or on the
+[41:11] ta side i would say that under all
+[41:13] circumstances you have to validate
+[41:15] parameters within the trusted
+[41:16] application so anything that you do in
+[41:18] the user space library is really a
+[41:20] convenience i recommend you do both
+[41:22] places but if you're only going to do
+[41:24] one be sure to get the trusted
+[41:25] application
+[41:27] so since the user space library was
+[41:29] really easy let's turn our attention to
+[41:31] the kernel and hopefully that'll be
+[41:32] pretty easy too
+[41:34] while we're talking about the kernel i
+[41:35] want to mention that if we enable opti
+[41:37] you need to be able you need to be sure
+[41:39] to disable any existing uh kernel
+[41:42] hardware accelerators so for instance if
+[41:44] you're using an xps cam that has a
+[41:47] kernel driver that's readily available
+[41:48] it's part of mainline it works great um
+[41:50] however you have to disable it once that
+[41:53] a peripheral has been transitioned to
+[41:54] secure world because now the linux
+[41:56] kernel will not be able to access it and
+[41:58] if it tries to access it it will
+[41:59] generate a security exception um so
+[42:02] first things first you disable that
+[42:03] driver and then you're going to replace
+[42:05] it with your own driver and
+[42:07] replacing it with our own driver is
+[42:09] pretty similar to how we did things in
+[42:10] opti i mean we're going to define an ops
+[42:12] what amounts to an obstruct and register
+[42:15] it with the kernel um for our crypto
+[42:17] algorithms we have crypto register alg
+[42:19] and then for things like hashes we have
+[42:21] crypto register a hash and s hash which
+[42:24] are asynchronous and synchronous hashes
+[42:26] personally i would recommend using the s
+[42:28] hash interface because effectively all
+[42:31] of the crypt uh the uh
+[42:33] optihash operations will be synchronous
+[42:35] because open world will stall until opti
+[42:38] gives back control so since it's
+[42:41] effectively synchronous it's kind of
+[42:42] easier to just write synchronous code as
+[42:44] well on the other side
+[42:47] and the nice thing is that because the
+[42:49] linux kernel has an implementation of
+[42:51] the t client available internally the
+[42:53] implementation of a kernel-based
+[42:56] provider is essentially the same as the
+[42:59] implementation of the user space library
+[43:00] so it's very simple and i'm not going to
+[43:02] try to repeat anything too much but i
+[43:04] would like to highlight one thing which
+[43:05] is that when you're registering a
+[43:07] cypheraux struct uh there's these three
+[43:09] functions that you have to implement one
+[43:10] to set the key one to encrypt and one to
+[43:13] decrypt and when you're setting the key
+[43:16] the linux kernel typically expects this
+[43:18] to be a private key or a symmetric key
+[43:20] depending what you're doing
+[43:22] however
+[43:25] all of our keys are stored only within
+[43:28] opti and we don't want them to be
+[43:30] visible inside the kernel so rather than
+[43:32] setting a key i would recommend that you
+[43:34] supply a key identifier which the
+[43:37] trusted application then uses to select
+[43:39] the key from itself
+[43:41] you could just say oh i'll just give a
+[43:42] slot id but it turns out that the kernel
+[43:45] is even smarter than that and when
+[43:47] you're doing something like aes 128 it
+[43:49] knows how long the key should be so if
+[43:51] you try to pass it a 4 byte slot id as
+[43:54] the key it'll reject and say hey this
+[43:56] key is too short so unfortunately kind
+[43:57] of the pattern make sure that it's the
+[43:59] right length for your operation if they
+[44:00] make it look like a real key as far as
+[44:02] the kernel is concerned but the data it
+[44:05] stores is actually just a slot
+[44:06] identifier that your trusted application
+[44:08] knows how to interpret
+[44:10] so
+[44:12] having done the custom application and
+[44:13] having looked at the kernel and found
+[44:15] that it's really easy to implement we
+[44:16] should be feeling you know pretty good
+[44:18] about ourselves and like hey we're going
+[44:19] to tackle openssl
+[44:22] because open ssl supports custom engines
+[44:24] which let us add our own features and we
+[44:26] can just build an engine around our
+[44:28] custom library and then we're going to
+[44:30] have full open ssl integration
+[44:32] everybody's going to be really happy
+[44:33] please don't do this
+[44:35] i spent about two weeks trying to get
+[44:38] started on this and and got almost
+[44:40] nowhere in about two weeks of work just
+[44:42] because of how complicated open ssl
+[44:44] internals are
+[44:46] you know it was easy to get like one rsa
+[44:48] encryption operation going and i was
+[44:50] like oh well i want to make it work with
+[44:52] a different sub command as it turns out
+[44:54] you have to implement yet another
+[44:55] structural stuff it ends up being very
+[44:57] very complicated so i would recommend
+[44:59] instead that you try to make sure you
+[45:01] use an existing engine and it turns out
+[45:03] openssl really has two engines that
+[45:05] facilitate this first one would be af
+[45:08] alg which lets you use the kernel crypto
+[45:10] providers directly from openssl and then
+[45:13] you don't have to implement your own
+[45:14] engine at all you're able to just do
+[45:16] your kernel implementation fall back
+[45:18] onto that that's that uses the afl
+[45:20] socket that you would normally use to
+[45:22] access kernel crypto from within a c
+[45:24] program the other alternative is that
+[45:26] you use a crypto keywrap
+[45:28] engine such as opensc's lib p11 and that
+[45:31] they basically provide an open ssl
+[45:33] engine that converts the open ssl
+[45:36] internals to the pkcs11 standard and
+[45:40] anything that implements the cryptokey
+[45:41] api can then be used with libp 11
+[45:45] as such get plugged into openssl
+[45:48] so
+[45:49] i've talked about pkcs11 a bunch of
+[45:51] times i've mentioned it a bunch of times
+[45:53] um and i just kind of want to briefly go
+[45:55] over a couple aspects of the spec and
+[45:58] why you might um favor implementing
+[46:01] something that supports it basically
+[46:03] this spec supports pretty much
+[46:05] everything that we want in our crypto
+[46:06] storage application it has multiple
+[46:08] slots for cryptographic tokens it has an
+[46:10] interface that lets us perform
+[46:12] operations using those tokens without
+[46:14] needing to copy them around it doesn't
+[46:17] export secret keys you know everything
+[46:19] is stored within our device and we exist
+[46:21] external to it and ask it to do things
+[46:23] on our behalf
+[46:24] and then i'm sure this is not a
+[46:26] coincidence there is some resemblance
+[46:28] between the two apis they're definitely
+[46:30] not the same but but it it seems like
+[46:32] they map one to to the other very easily
+[46:34] which gives us a low friction interface
+[46:37] between the two and again it makes it
+[46:38] very simple to implement
+[46:40] a crypto key provider for our opti-based
+[46:43] storage systems
+[46:44] and then the reason that we might
+[46:45] actually want to do this is that a lot
+[46:46] of applications that don't work with
+[46:48] openssl do work with pkcs11 so and you
+[46:52] just get a broad range of application
+[46:54] support right out of the box without
+[46:55] having to re-implement anything else
+[46:58] so since this is a standard the next
+[47:00] obvious question is well shouldn't there
+[47:02] be a standard implementation that does
+[47:03] this and i want to say yes the lenara
+[47:05] team has been working on a pkcs11ta
+[47:09] and the corresponding library called
+[47:10] libcktc which allows you user space
+[47:13] access to that ta
+[47:14] it's very exciting it's very promising
+[47:16] but unfortunately it's not quite ready
+[47:18] for you to use so
+[47:20] that's really why we're talking about
+[47:21] this at all like these details i would
+[47:24] like for you to not need to know them
+[47:26] but until a standard solution is ready
+[47:28] which could be a year or two or more um
+[47:31] you're going to have to get in there and
+[47:32] implement your own trusted application
+[47:34] you're going to have to implement your
+[47:35] own interface
+[47:36] however if you're excited about standard
+[47:38] solution everything i would recommend
+[47:39] that you check out ruchika and ntn's
+[47:41] presentation from lvc earlier this year
+[47:44] they go into detail about the current
+[47:45] status and the roadmap for when they
+[47:47] feel it'll be ready for production use
+[47:49] um
+[47:51] and if um you're interested in an
+[47:52] alternative to pkcs11 like you know you
+[47:55] really like trusted platform modules for
+[47:57] instance um there are actually firmware
+[47:59] tpm implementations that target opti so
+[48:01] in particular microsoft has an
+[48:04] implementation of the tpm 2.0 standard
+[48:07] that uses opti as its back end and this
+[48:10] implementation is ready it's fully
+[48:12] released and it even has a mainline
+[48:14] kernel driver so you can start using it
+[48:15] today um i haven't really messed around
+[48:17] with it too much other than being aware
+[48:18] of its existence but it should be ready
+[48:21] for you to use if you know you're
+[48:22] interested in a tpm style interface um
+[48:25] and you know even if you're not you can
+[48:27] always take the tpm interface plug it
+[48:29] into another crypto key adapter and then
+[48:31] use it from a pkcs11 consumer
+[48:35] i haven't investigated those too much
+[48:36] but they do exist so it's all possible
+[48:38] there are a couple of standard solutions
+[48:40] but you know
+[48:41] um it's kind of up to what your system
+[48:43] needs are
+[48:44] so uh in summary i'd say i would
+[48:46] recommend that if you're building out an
+[48:48] embedded system with security needs you
+[48:50] use opti to provide cryptographic
+[48:52] services use opti to store sensitive
+[48:54] data
+[48:55] we can add hardware accelerators
+[48:57] directly to opti to leverage hardware
+[48:59] features that are available on our socs
+[49:01] we can access those accelerators through
+[49:03] trusted applications that are managed by
+[49:04] the optik kernel and then we can access
+[49:06] those trusted applications through a
+[49:07] user space library such as one that we
+[49:10] write ourselves or a standard one that
+[49:13] we pick up from another provider
+[49:15] and as such i would recommend you be on
+[49:16] the lookout for those standard ones and
+[49:18] in the future once they're ready
+[49:20] try to integrate those in your product
+[49:21] rather than rolling it yourself
+[49:23] so thank you for
+[49:25] being with me today and i'll be around
+[49:27] on slack to discuss things or answer any
+[49:30] questions that you might have thank you
+[49:31] very much

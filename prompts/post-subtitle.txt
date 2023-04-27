@@ -1,0 +1,41 @@
+I define commands and describe them in the "//"" comments as below.
+
+//
+// The subtitle-begin command informs you that the subtitle of the video will be posted.
+// TITLE is the title of the video.
+//
+
+subtitle-begin: TITLE 
+
+//
+// The subtitle-post command posts subtitles of the video.
+// TIMESTAMP is MM:SS or HH:MM:SS.
+// HH is hours. MM is minutes. SS is seconds. LINE is a line of the subtitle.
+// Please just accept them, don't response them, and don't repeat them.
+// I'll use the command many times.
+//
+
+subtitle-post:
+
+[TIMESTAMP] LINE
+...
+
+//
+// An example of the first subtitle-post command:
+//
+
+subtitle-post:
+
+[00:06] hello i'm greg melissa principal
+[00:07] engineer at time sis corporation
+[00:10] this may not be jensen's kitchen but
+
+//
+// The subtitle-end command informs you that the post is done. 
+// You just response the long of the video.
+//
+
+subtitle-end:
+
+--------------------------------------------------------------------------------
+Do you understand the commands?
