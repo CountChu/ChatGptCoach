@@ -1,0 +1,646 @@
+[00:01] [Music]
+[00:08] right so yep so I'm gonna kind of go a
+[00:13] bit fast because there's a lot of
+[00:14] contents there's a lot of like words in
+[00:16] there that has like a lot of meanings to
+[00:18] each of those words so it try to be
+[00:19] brief but I try to kind of go fast as
+[00:23] well and you know like if there's any
+[00:25] question feel free to raise and try to
+[00:27] forget those because we only have like
+[00:29] 40 minutes I think for the entire
+[00:32] presentation so the whole idea of this
+[00:33] presentation is to kind of go over and
+[00:38] see you know how we can secure basically
+[00:42] improve security on IOT devices so I'm
+[00:45] gonna talk about kind of this is the
+[00:46] agenda gonna discuss a bit of that the
+[00:48] IOT needs on the security side talk
+[00:50] about hardware secure modules and how we
+[00:52] you know like propose it a solution that
+[00:55] can use up t-to and at arm Trez own to
+[00:59] secure the keys used by the device so
+[01:05] when you talk about like the general
+[01:07] security needs for IOT they're usually
+[01:09] you know like broadly speaking two
+[01:11] blocks of like you know like security
+[01:13] concerns one is like for the device
+[01:15] itself to make sure that you're running
+[01:18] the firmer that it was supposed to be
+[01:20] running there and is the authentic
+[01:22] firmer as well so for example this
+[01:24] involves like secure boot verified boot
+[01:27] and so on and so forth and something
+[01:29] that is quite already come on unusual
+[01:34] and embedded devices so people been
+[01:35] doing that like force every is already
+[01:37] and which is why it's not gonna be like
+[01:40] the focus of the presentation itself
+[01:41] there's quite a lot of material out
+[01:44] there to show how we can do like secure
+[01:47] boot and so on the focus of that this
+[01:50] presentation is going to be on the
+[01:51] second block that which is basically the
+[01:55] network security has we involve like an
+[01:57] IOT device and IOT devices basically you
+[01:59] know a traditional embedded device but
+[02:00] it's connected online like to insane
+[02:03] communication to cloud servers I can be
+[02:06] updated over the air as well over the
+[02:07] network so you also have to not only
+[02:10] secure the software that is running
+[02:12] there
+[02:12] but you have to secure the communication
+[02:14] that happens inside the device so for
+[02:17] example when a sensor is pushing data to
+[02:19] the cloud when it's getting data from
+[02:22] the cloud itself when it's performing
+[02:24] the update you also need to make sure
+[02:27] that you you know you're able to protect
+[02:28] the communication and when you talk
+[02:31] about like protection you talk about
+[02:33] encryption by default and when you talk
+[02:37] about encryption you talk about like
+[02:39] then managing the keys for the
+[02:41] encryption and when you have like for
+[02:43] example in IOT which is pretty common
+[02:45] you want to have like a way to identify
+[02:48] the device and by as a consequence like
+[02:51] in a unique way to identify the device
+[02:53] and as a consequence each device would
+[02:55] have a unique key and that key would
+[02:58] need of course like to be made available
+[03:01] as part of the device so you also need
+[03:05] to protect not only the communication
+[03:06] and so on that happens but as a
+[03:09] consequence you need to protect the keys
+[03:10] because if you lose the keys you lose
+[03:13] all the security that it was supposed to
+[03:16] be protecting and so and this is not
+[03:21] something that is new to the industry ah
+[03:24] nowadays you see like for example
+[03:25] calcloud deployment and so on even
+[03:27] personal computing general people
+[03:30] already kind of you know having this
+[03:31] sort of concern say they already have
+[03:33] like solutions that are you know pretty
+[03:35] standard over you know like that's being
+[03:38] used over the past I don't know like 10
+[03:39] 15 years and one of the most like common
+[03:43] solutions is the hardware security
+[03:46] module I don't know if any of you is
+[03:49] already you know I know that mostly
+[03:52] everyone already you know I have their
+[03:54] own key when signing commits or signing
+[03:56] emails encrypting and so on and so forth
+[03:58] who actually uses an external hard to
+[04:01] secure module to store the keys and
+[04:03] manage the keys so it's unfortunately
+[04:05] not that common
+[04:07] but the reason is of course I you don't
+[04:11] want to have your key online on the
+[04:13] device or they live in a disk or so on
+[04:15] because it's pretty easy to extract and
+[04:17] remove and copy and then you lose the
+[04:19] whole aspect of security there in a
+[04:22] hardware secure motto is is made
+[04:24] especially for this purpose
+[04:26] to make it harder that is harder to
+[04:29] tamper with harder to remove the data
+[04:31] and not only the keys stored at the hard
+[04:34] to secure module but also like the
+[04:36] crypto operations happens inside the
+[04:38] module as well and you see like for
+[04:41] example there's network based devices
+[04:44] that can be connected Network PCI
+[04:46] devices more traditional ones that are
+[04:50] pretty common nowadays like USB based
+[04:51] devices and and you see like there's
+[04:56] several different ways to connect with
+[04:57] those devices and if you look how you
+[05:02] you you were kind of generically access
+[05:05] a harder secure modern nowadays you
+[05:07] naturally find out about the
+[05:10] specification that I wrote in here which
+[05:12] is pkcs 11 which is basically an
+[05:18] abstraction that gets created so you
+[05:20] only use that API to perform the
+[05:22] encryption to manage your keys and so on
+[05:24] and then underneath doesn't matter if
+[05:25] like it's a USB bus or like a PCI
+[05:28] network you only kind of get to touch
+[05:31] that interface now to show a little bit
+[05:41] of more about like DSS 11 and show the
+[05:45] importance of it
+[05:48] the sophistication itself is a pretty
+[05:51] high level and a platform in the
+[05:53] independent API for cryptographic
+[05:56] devices in general Rodes I think
+[05:58] initially focus on smart keys in March
+[06:03] cards but nowadays this is like pretty
+[06:07] generic for how particular modules as
+[06:09] well it's kind of considered the
+[06:11] standard API there's other ways to you
+[06:14] know like to manage and use HSN but it's
+[06:17] pretty you know like kind of the
+[06:19] standard nowadays and supported by a
+[06:22] wide variety of like software's like for
+[06:25] example pens to sell new TLS wolf
+[06:28] OpenVPN there like all sorts of like
+[06:30] security related software usually
+[06:34] supports
+[06:36] PSS eleven one other thing about it as
+[06:40] well which is good since has been used
+[06:42] for for quite a few years there's a
+[06:44] great tooling support you can't there's
+[06:47] also like software implementations that
+[06:49] you can play with completely done by
+[06:52] software just to test the API and
+[06:54] getting you know like a handle of the
+[06:55] users in there in the way that API works
+[06:59] is is a pretty simple definition of the
+[07:01] see base of API is an ANSI kind of
+[07:04] evasive API and the data itself is
+[07:07] managing I kind of object based approach
+[07:09] you have like certificates keys private
+[07:12] keys and so on and that kind of having a
+[07:17] better description here how works like
+[07:18] the API is pretty simple you have like a
+[07:21] fixed set of functions for example to
+[07:24] initialize it's all cane again
+[07:26] information generating keys in case you
+[07:28] want to generate it for example a key
+[07:29] pair and now of course like the private
+[07:32] key would naturally be stored and only
+[07:34] available to the harder and you will be
+[07:36] able to extract the public key you want
+[07:38] to do perform encryption digest sign and
+[07:41] so on and so forth and in its there's
+[07:43] also like a fixed set of parameters for
+[07:45] each of those functions but it's pretty
+[07:47] well defined and not so complicated to
+[07:49] get a grasp of and now the data itself
+[07:53] the way it's managed the way it's stored
+[07:56] is basically kind of you know object way
+[07:59] over tracked approach basically you have
+[08:02] like the key and then a key you have
+[08:03] like private key public key in case you
+[08:05] know like is a symmetric key you can
+[08:08] also have like certificates and then
+[08:11] there's also the other way that they
+[08:14] abstract which is called mechanism is
+[08:16] basically like for example ECDSA would
+[08:20] be a mechanism RSA would be a mechanism
+[08:22] and with that mechanism particular you
+[08:24] are allowed to do certain crypto
+[08:26] operations like for example encrypting
+[08:28] signing deriving keys and so on so you
+[08:31] kind of combined the key with the
+[08:32] mechanism and then you can perform a set
+[08:35] of crypto operations so you know like
+[08:41] going back to the beginning of the
+[08:43] presentation and talking you're like why
+[08:46] security is of course like critically
+[08:48] important for alt
+[08:49] and you see that there's already you
+[08:52] know a pretty common industry using
+[08:54] harder you know like secure modules for
+[08:57] enterprise and of course like the
+[08:59] question is why can we just simply use
+[09:01] that for IOT right it's already there
+[09:03] like there's already great support API
+[09:05] hardware and so on and so forth
+[09:06] banana of course you end up like the
+[09:10] major blocker which is cost like several
+[09:13] IOT devices are cost constraining right
+[09:16] you don't want to have for example a
+[09:18] lamp a smart lamp that you know like
+[09:21] costs $200 just because a secure like
+[09:23] makes no sense they're not gonna be able
+[09:24] to sell you know like in the end so you
+[09:27] have you know like the costs
+[09:29] constraining aspect of it you could for
+[09:32] example use TPMS which are cheap the
+[09:35] harder itself is pretty cheap but it's
+[09:37] pretty complex on the software side
+[09:39] otherwise so there's - well the nice
+[09:43] thing is I think over the past few years
+[09:44] like there's been a lot of work on a
+[09:46] software side to make it easier like
+[09:48] from the bootloader to the user space
+[09:50] and so on and so forth but it's - it's
+[09:53] still like known to be super complex to
+[09:55] deal with the other complicated aspect
+[10:00] for IOT kind of in particular mostly
+[10:03] because you know it wants to ship a
+[10:04] product you need to support a product
+[10:06] for several many many years and
+[10:08] sometimes it's pretty hard to replace
+[10:10] the hardware in case you have an issue
+[10:12] and what do you see is that most of
+[10:15] those like HSMs they are all kind of
+[10:18] they all have like proprietary
+[10:19] implementations internally like there is
+[10:22] a proprietary field with their runs
+[10:23] underneath and you can have issues of
+[10:26] course you can have bugs and I you can
+[10:28] also like you end up like being blocked
+[10:31] by the module maintainer in case there's
+[10:33] a vulnerability in there that in each
+[10:35] affects its your product its your risk
+[10:37] but you see you dependent on the vendor
+[10:40] to provide the fix and sometimes you
+[10:42] didn't replace the hardware so it's it's
+[10:44] it's not necessarily an easy an easy
+[10:46] solution and the the nice thing about
+[10:52] IOT in general is like now currently is
+[10:56] most of the devices that are all there
+[10:59] are arm base it in the way
+[11:00] I don't have the percentage but I'm sure
+[11:03] like a large large amount is our basic
+[11:06] and now if you see armed there's several
+[11:09] several like a extensions to support all
+[11:12] sorts of stuffs you know like so maybe
+[11:16] you know like can we leverage the
+[11:19] security extensions for example to kind
+[11:21] of you know like implement have kind of
+[11:26] the same things as you wouldn't
+[11:27] naturally have which NHSN but like
+[11:29] supported by hardware you know like
+[11:31] that's that's something that we started
+[11:35] to question as you started like you know
+[11:36] like to investigate how to best use this
+[11:38] and one nice thing about arm is that
+[11:41] there's a pretty well-defined extension
+[11:44] which is called a trusted execution
+[11:46] environments like arm trust zone which
+[11:48] basically allows the execution of a
+[11:51] secure s in parallel to this traditional
+[11:54] s and if you see nowadays for example
+[11:57] several products actually already using
+[11:59] that for example phones like Android
+[12:02] phones set up box like the way that they
+[12:05] handle for example the REM piece or like
+[12:07] encryption for the disk on the phone so
+[12:10] they're all using that already it's just
+[12:12] not widely you know like known uncommon
+[12:15] for people to you know like to use so
+[12:16] then the question you know like can we
+[12:18] kind of leverage that and have you know
+[12:21] like an HSN implementation that is
+[12:22] actually just leveraging what is already
+[12:24] on the hardware instead of you know like
+[12:26] relying on another entity and by working
+[12:31] in Lennar before like you know being
+[12:33] involve it kind of in the beginning not
+[12:35] participating much but seeing what
+[12:38] happened there there's now an open
+[12:42] source OS that can be run as the secure
+[12:45] OS so that the nice thing is not only of
+[12:48] course like we can change we can create
+[12:50] applications and so on and so forth but
+[12:51] we can start using those like those you
+[12:54] know like extensions in an open source
+[12:56] way in range which is pretty cool in
+[13:07] here just
+[13:08] kind of to give an overview how it works
+[13:11] the opti part in there is just simply
+[13:13] the secure oh s the reach OS here is
+[13:17] just Lennox and the way that you would
+[13:20] use is that you would have your rich OS
+[13:23] for whatever that is doing there there's
+[13:26] a well defined in the API which is part
+[13:28] of another sophistication called a
+[13:29] global platform that talks to the kernel
+[13:32] the coral now has a tee driver into
+[13:34] something that's that is pretty nice
+[13:36] nowadays is that the up t-t driver is
+[13:40] already mainline so there's really not
+[13:42] much that you can do that you need to do
+[13:44] in order to use it it's all there
+[13:46] and what that quorum would do is that it
+[13:49] would call like the secure monitor calls
+[13:50] which would be transferred in a way like
+[13:54] to the secure is and on the secure Wes
+[13:56] you can of course like perform or sorts
+[13:59] source of like you know like secure
+[14:01] related stuff like for example DRAM
+[14:03] which would be controlling the RM keys
+[14:06] how it's using on setup box and so on
+[14:08] and so forth so if you see this like it
+[14:11] kind of matches well like with you know
+[14:14] like the the needs for like an HSN
+[14:16] because what we have here is like all
+[14:19] the key or the crypto related all secure
+[14:22] stuff is completely isolated on another
+[14:24] less it's still running on the same
+[14:25] harder but running on other OS and you
+[14:28] you know like you can have like an
+[14:30] abstracted in and it's despite API to
+[14:33] access through you know like your Linux
+[14:35] application so a bit more about opti as
+[14:44] I said it's an open source trusted
+[14:47] execution environment OS maintainable in
+[14:50] RL there's several other vendors as well
+[14:53] that are working in supporting and
+[14:54] sanding patches these days from all
+[14:57] sorts of companies and XP is one arm
+[15:00] quite a few others and the way that it
+[15:04] was constructed is basically using the
+[15:07] global platform API so platform API is
+[15:09] an author consortium like the defines
+[15:12] what you know like would be the API is
+[15:14] for trusted execution environment not
+[15:16] only trust zone but all you know because
+[15:18] we also have orders
+[15:20] other solutions as well that are similar
+[15:22] and there's basically two main pieces
+[15:25] one is the client API which is how linux
+[15:28] communicates to the other side which is
+[15:30] a trusted application in our well define
+[15:34] an API that expose is basically a
+[15:37] comment ID and up to four parameters and
+[15:39] you can also like share a memory between
+[15:42] them
+[15:42] so with those command IDs you can
+[15:44] basically implement everything is up to
+[15:46] you you can implement your own trusted
+[15:49] application the finest set of command
+[15:51] IDs and use those through the API and on
+[15:56] internal side of things which is mainly
+[15:59] available for the trusted application
+[16:01] there's another set of API s that can
+[16:03] manage like for example trust storage
+[16:05] data keys crypto related calls as well
+[16:08] time with the medical operations so
+[16:10] basically everything that you know like
+[16:12] that it would need in case you'd be
+[16:14] thinking only at HSN is already kind of
+[16:16] available here so you know why not just
+[16:18] simply leverage that and just kind of a
+[16:24] to show to get a kind of a better grasp
+[16:26] on the client API where C is like it's
+[16:29] our Linux application how it will be
+[16:32] calling the secure application on the
+[16:34] other side as I said like it's just like
+[16:37] an evoke comment that would call the
+[16:38] secured monitor call the process and
+[16:40] send the communities and the operation
+[16:43] the operation is where the finds all the
+[16:45] parameters that are required and of
+[16:47] course like a session because we need to
+[16:49] open a session and so on and so forth to
+[16:50] do to the secure oh s and so we we were
+[16:59] like investigating how we could you know
+[17:00] like use HSM on a trust zone and so on
+[17:04] and we gladly found out that this was
+[17:07] something that was already started the
+[17:08] denaro so it was started by the 18
+[17:11] career
+[17:12] I don't know hope like to pronounce it I
+[17:14] think he's French okay here maybe but
+[17:18] there's there's an RFC available it's
+[17:21] still not murdered upstream but there's
+[17:23] quite a bit of work going so for anyone
+[17:26] that is interested in you know just
+[17:27] checking and we're like you know going
+[17:29] there to the pool request and see
+[17:31] there's also quite a few things missing
+[17:34] interested on helping and the security
+[17:40] service is know as any you know like a
+[17:44] secure application it's done is like you
+[17:48] have the user space side which basically
+[17:51] uses that API that I showed in previous
+[17:53] slide here which what we call is like
+[17:56] Libby SKS in this case
+[17:59] database guess basically implements the
+[18:01] PK says I'll have an interface so it's
+[18:04] just kind of my Maps it uses the T
+[18:06] command-line client API and implements
+[18:09] the cases 11 interface on top and on the
+[18:13] secure side there's an SKS trusted
+[18:17] application which basically implements
+[18:19] the 80 HSN side of things like all the
+[18:21] crypto operations the key management the
+[18:25] data and so on including secure storage
+[18:27] is done by the the trusted application
+[18:31] we also like at founders because since
+[18:33] this is not yet upstream we also have
+[18:35] like a git repo containing not only what
+[18:40] is on that pull request but also some
+[18:42] other additions that we did in
+[18:44] improvements which we're of course like
+[18:46] on up streaming kind of you know to the
+[18:49] maintainer first and then which will
+[18:51] land on the project later on but in case
+[18:53] you want to have access to both the
+[18:55] library and the trusted application and
+[19:00] also what kind of a-- was showing how
+[19:02] cases and ivan works and how you know
+[19:04] like the comment ID works when you're
+[19:07] talking with the trusted application the
+[19:09] mapping i in the way that that that that
+[19:12] secure key services APR worse is it's
+[19:14] pretty simple actually like for every
+[19:16] pkcs 11 a call we simply map to a
+[19:19] command ID and the parameters that are
+[19:23] pass it over like te command parameters
+[19:24] and in case there's a need for more data
+[19:26] or additional parameters for example
+[19:28] which are not covered on that for
+[19:30] it's shared memories use it in
+[19:32] serialization basically of the arguments
+[19:35] back and forth on both sides and kind of
+[19:42] to give a better overview how we would
+[19:44] actually use all of this I was talking
+[19:47] kind of in a real-world situation so the
+[19:52] secure world which is running on a trust
+[19:54] zone running opti which is open-source
+[19:57] running as the secure ass you would have
+[20:00] like the trusted application which kind
+[20:02] of implements the HSM running on the
+[20:04] secure word the communication as I said
+[20:08] I happens through the the numerous
+[20:09] kernel it uses the te client API the
+[20:13] maps the command IG and so on and here's
+[20:16] the part that I was also developed
+[20:18] together with the key service which
+[20:20] basically implements the P cases and I
+[20:22] have an API to do all of this
+[20:25] abstraction and from here on it's
+[20:28] basically generic as any other HSM that
+[20:31] you have out there you would use for
+[20:33] example plants itself and it's just a
+[20:35] matter of using the OpenSSL pkas on as
+[20:38] an engine and then everything would be
+[20:40] transparent and it would simply behave
+[20:43] as as an HSM and you know like thinking
+[20:48] on a iot these can be used and you know
+[20:50] like to send data application to the
+[20:52] cloud in case you have like a
+[20:53] certificate or like a device specific
+[20:55] key that you want to sign information
+[20:58] you you can do that and you can also
+[21:00] like secure the a page mechanism through
+[21:03] the same way right you simply by using
+[21:04] HH a HTTP on when downloading being
+[21:09] image and i i knew i wouldn't have a way
+[21:17] to demo but I don't know like super
+[21:20] clear but you can gather the slides
+[21:23] later mark and demo on my own computer
+[21:25] here's basically demonstrating how how
+[21:27] it works the nice thing is that fork emu
+[21:31] arm 64 there support not only for
+[21:35] running the OS but there's also support
+[21:37] for running the Sakura as I played it as
+[21:40] well so
+[21:41] the way that I called chemo I just
+[21:43] passed damage past the the arm trusted
+[21:46] firmer the opti as well you boot and so
+[21:49] on and so forth
+[21:50] and I open like basically two cereals
+[21:53] the first one it's the normal serie that
+[21:55] you would have I like for you boot
+[21:57] kernel and so on and the second zero is
+[22:00] the basically the output from the secure
+[22:03] oh s so you can you know like as you
+[22:05] debug like for example here up TV
+[22:08] version 3.6 and so on and so forth so
+[22:10] you can communicating and see what's
+[22:13] happening on both sides of the the word
+[22:15] but in a way and to show how the our LT
+[22:21] a client actualize ur uses this it
+[22:26] simply just uses open SSL with the pkcs
+[22:29] and I have an engine like here's nothing
+[22:31] that was custom nothing was customized
+[22:33] it here's just like the generic engine
+[22:35] talking over and you're like the sks
+[22:38] client library that communicates with
+[22:41] the secure word and a trusted
+[22:42] application here's just sending diadem
+[22:44] and sign-in manifest and so on and you
+[22:47] can also see for example here the
+[22:51] signing taken in place like in this case
+[22:53] I have a device specific key then it's
+[22:56] maintaining in in the trust zone and
+[22:59] when I'm communicating with the server
+[23:02] and our ot a client is communicating
+[23:05] with the survey its signing to establish
+[23:07] like the handshake the TLS handshake and
+[23:09] you can actually see the signing
+[23:11] operation happening here like that is a
+[23:13] you see DSA sign with the command and
+[23:16] and so on and so forth proving that the
+[23:20] actual crypto calls and operations are
+[23:23] happening on the secure oh s so while as
+[23:35] I was showing on ki-moon Springs like
+[23:39] why of course like most of it is working
+[23:42] there's - quite a bit of work the next
+[23:44] steps of course like as we make it its
+[23:47] way like on the upstream its then
+[23:49] testing you know so we can make sure
+[23:52] that we test all the supported
+[23:54] and so on the proper way additional
+[23:59] mechanisms as well this is something
+[24:01] that maps with cases 11 or 3.0
+[24:05] specification which should be coming out
+[24:07] I don't know like in the next few months
+[24:09] which ads basically get a new set of
+[24:13] like mechanism or crypto operations and
+[24:18] different crypto types and put their
+[24:20] weight additional curves and so on so
+[24:23] this is also something that that needs
+[24:25] to be done and as I said like it's quite
+[24:31] a lot of content quite a lot of
+[24:32] individual pieces the opti documentation
+[24:35] they updated last year and now it's all
+[24:39] I can read the docs
+[24:40] and it's a pretty extensive
+[24:42] documentation pretty nice to read get to
+[24:44] learn as well how the secure Wes works
+[24:47] how are you
+[24:48] you know like implementing create a
+[24:50] trusted application
+[24:51] there's several useful presentations
+[24:53] most most of them I think we're done in
+[24:55] Ladera connects and including one when
+[24:59] it in like introduced ACS and so you
+[25:04] know I would suggest anyone that is
+[25:06] interested to take a look at those this
+[25:08] pack itself if you want to see more
+[25:11] about you know how the mechanisms which
+[25:13] mechanisms are supported and so on just
+[25:15] go to Asus website they are FC for
+[25:19] basically this work that I was showing
+[25:21] like for das guests first application in
+[25:24] library is on github so we're still
+[25:26] working to get you know the needed
+[25:29] features there in support and actualize
+[25:33] which is our LTE client also you know
+[25:35] there's a pretty nice set of
+[25:36] documentation showing how to use PKS s11
+[25:40] together with opti when together with
+[25:44] open SSL in order to perform like secure
+[25:47] communication overrated HTTPS and and
+[25:54] that's pretty much it
+[25:57] so I put letter here just to kind of
+[26:03] kind of a better picture any questions
+[26:07] there's a lot of content so basically
+[26:23] IOT there's some devices that are very
+[26:27] very limited so and if I remember
+[26:30] correctly this is for arm-based yes
+[26:34] architecture I am visiting taxi it
+[26:37] ranges from several different not for
+[26:39] example I know that arm is introducing
+[26:41] now like fours and frames to use some
+[26:44] sort of like trust zone as well but like
+[26:46] for microcontrollers they don't
+[26:48] necessarily have but like arm these five
+[26:52] they think already had it six like seven
+[26:55] of course in v8 they all have the
+[27:00] extensions so depends a lot on the which
+[27:03] ship on which version and revision but
+[27:06] even for hims use they are introduced
+[27:08] introduced an introduction the same
+[27:09] thing basically okay
+[27:22] hi you said that you are following the
+[27:27] API from global platform on the open
+[27:32] source project and I'd like to know if
+[27:35] you you are aware of some kind of
+[27:38] certification following the Common
+[27:40] Criteria to eat a protection profile for
+[27:46] the open source project yeah that's
+[27:47] actually an interesting question and I
+[27:49] wanted to kind of raise with the
+[27:50] maintainer it's because I don't know how
+[27:51] the certification certification process
+[27:54] is is happening I know they were
+[27:56] interested on going and working with
+[27:58] that but I personally I don't have
+[28:01] information on that but yeah you would
+[28:03] be needed
+[28:21] I hope it's not a really too simple
+[28:23] question but you mentioned at the
+[28:24] beginning that both parts can share
+[28:28] memory in between and does this need to
+[28:32] be correctly configured to not like
+[28:35] expose information to each other yeah
+[28:38] the the shared memory is more like to
+[28:41] pass over like data for this the calls
+[28:44] itself that you do right for example I
+[28:47] want to encrypt something and I want to
+[28:50] send that data you know like so I
+[28:52] populate basically shared memory read
+[28:54] that data and then I basically encrypt
+[28:56] on the other side so that's how
+[28:59] basically it gets but of course there's
+[29:01] several you know like levels of concerns
+[29:03] and someone that you need to to kind of
+[29:06] to handle that properly to avoid
+[29:08] mistakes in there but we try to reduce
+[29:11] the use mostly just to pass over to
+[29:13] parameters and getting the output
+[29:15] basically and not for much much more any
+[29:27] more questions
+[29:31] thank you thank you
+[29:34] [Applause]
