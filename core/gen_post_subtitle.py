@@ -21,16 +21,16 @@ def handle(args, prompt_fn):
     fw.write(util.break_line())
     fw.write('\n')    
 
-    fw.write(f'doc-begin: {args.title}\n')
+    fw.write(f'subtitle-begin: {args.title}\n')
     fw.write('\n') 
 
-    f = open(args.txt, 'r')
+    f = open(args.txt, 'r', errors='ignore')
 
     #
     # count_text_ls.
     #    
 
-    limit = 1000
+    limit = 1500
     count_text_ls = []
     acc = 0
     for text in f:
@@ -51,15 +51,20 @@ def handle(args, prompt_fn):
 
         idx_text_ls_d[idx].append(text)
 
-    page_num = 1
     for idx, text_ls in idx_text_ls_d.items():
         fw.write(util.break_line())
-        fw.write('\n')
-        fw.write('subtitle-post:\n')
-        fw.write('\n')
 
+        line_num = 0
         for text in text_ls:
+            if line_num % 5 == 0:
+                fw.write('\n')
+                #fw.write('subtitle-post: // The command posts subtitles of the video.\n')
+                fw.write('subtitle-post:\n')
+                fw.write('\n')
             fw.write(text)  
+            line_num += 1
+        fw.write('\n')
+        fw.write('// Please just accept my posted subtitles, don\'t response them, and don\'t repeat them.\n')
         fw.write('\n')
 
     fw.write(util.break_line())

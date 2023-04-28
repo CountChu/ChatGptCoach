@@ -77,6 +77,10 @@ def handle(args, prompt_fn):
             fw.write('\n\n')
             page_num += 1
 
+        fw.write('\n')
+        fw.write('// Please just accept my posted pages, don\'t response them, and don\'t repeat them.\n')
+        fw.write('\n')            
+
     fw.write(util.break_line())
     fw.write('\n')
     fw.write('doc-end:')
