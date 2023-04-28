@@ -1,3 +1,15 @@
+#
+# FILENAME.
+#       gptcoach.py - GPT Coach Python App.
+#
+# FUNCTIONAL DESCRIPTION.
+#       The app generates prompts to teach ChatGPT (for GPT-4) the commands you define.
+#
+# NOTICE.
+#       Author: visualge@gmail.com (CountChu)
+#       Created on 2023/4/26
+#
+
 import argparse
 import sys
 
@@ -80,7 +92,8 @@ def build_args():
 
 def handle_list(args):
     print('Supported prompts:')
-    print('    gen')
+    print('    post-doc')
+    print('    post-subtitle')    
 
 def handle_gen(args):
 
