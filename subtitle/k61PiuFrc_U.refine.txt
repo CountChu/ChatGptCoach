@@ -1,0 +1,374 @@
+[00:00] [Music]
+[00:08] [Music]
+[00:14] hello and welcome to my presentation on
+[00:19] a secure storage in OP-TEE i'm Jens Wiklander
+[00:22] Linaro security working group
+[00:27] the last release of OP-TEE we have some
+[00:32] significant updates in secure storage 
+
+[00:35] so it was time to make another report to
+[00:39] bring people up to date so I start with
+[00:43] a yeah the agenda is what is
+[00:46] secure storage just a recap from
+[00:48] previous sessions and the timeline on
+[00:53] when we have introduced different
+[00:56] features encryption keys that scheme
+[01:00] isn't really changed but it's important
+[01:02] so I will do a recap on that then we
+[01:06] have the new way of dealing with secure
+[01:09] objects and and the anti rollback that
+[01:15] we use RPMB before 
+
+[01:23] so what is secure storage it's where we store objects and
+[01:27] keys for a TA and it should be only
+[01:32] accessible for that particular TA and no
+[01:37] one else should be able to manipulate
+[01:39] with the objects or even see what's in
+[01:42] them preferably not be able to tell very
+[01:46] much at all about the objects and then
+[01:52] we since we OP-TEE
+[01:56] we are working with the platform api s--
+[01:59] so we support all the ordinary global
+[02:03] platform API used for manipulating
+[02:06] objects
+
+[02:10] and as you can see here we have improved
+[02:15] secure storage over time last presentation
+[02:21] I think was at the 2.1 with the multiple
+[02:24] storage support after that we have
+[02:26] improved isolation between TAs and
+[02:31] simplified parts of the implementation
+[02:34] with and then after that improve the
+[02:38] integrity with the hash tree which I'm
+[02:41] going to talk about today and finally
+[02:43] also use RPMB for anti rollback protection
+
+[02:48] so the encryption keys each
+[02:59] secure object is encrypted with a file
+[03:04] encryption key which is unique from that
+[03:06] file it's when a new file is created
+[03:08] this file is generated and the file
+[03:13] encryption key itself is also stored
+[03:15] inside the key and then encrypted with
+[03:18] the trusted application storage key
+[03:22] which is unique per application and it's
+[03:26] in its term derived from the secure
+[03:29] storage key which in its turn is derived
+[03:33] from the hardware unique key
+
+[03:45] so the hash tree this is it's nothing to
+[03:50] get interesting it's a complete binary
+[03:53] tree meaning that all the higher levels
+[03:57] in the tree is full and we feel from
+[04:01] left to right so thus no gaps thus
+[04:05] always I mean note 1 to 6 if you have
+[04:09] that you will always have a node 5 also
+[04:11] so we have no holes in the sequence of
+[04:15] nodes and each node is used to protect
+[04:22] the different blocks that the secured
+[04:27] object itself is built up from I will
+[04:30] come to that in in later slides and we
+[04:35] use AES-GCM as encryption and integrity
+[04:40] protection of the content of the files
+[04:44] so we have a tag and an IDE that we need
+[04:47] to keep track of and that's what we put
+[04:49] in the nodes and then the parent nodes
+[04:54] keep an hash of the children nodes and
+[04:57] so on that's how we scale it so it means
+[05:01] that we don't have to have a fixed
+[05:04] number of nodes or anything it's just
+[05:08] the amount of memory that limits us a
+[05:13] curious thing is that we start counting
+[05:18] the node from one and the data box from
+[05:20] zero it's because it's easier when
+[05:28] traversing the tree if we account like
+[05:31] that but it means also that node1
+[05:34] corresponds to block 0 but that's not so
+[05:38] hard to keep track of
+
+[05:44] and then at the beginning on each now
+[05:49] we're talking about the how the file
+[05:52] looks in in the binary format so at the
+[05:56] beginning of each secure object we have
+[05:59] a hash free header which contains the
+[06:03] encrypted key the that I spoke about
+[06:06] earlier I mean the it's the key that is
+[06:09] used to decrypt the object in the end
+[06:12] but it's stored in the file and a
+[06:15] counter which isn't really used for and
+[06:22] to rollback but it's used if you don't
+[06:25] have any role at the end you can find
+[06:27] the latest generation of the header at
+[06:30] least and then we have a metadata that
+[06:33] holds the entire length of the of the
+[06:36] object since it's built up from blocks
+[06:39] and the application expects its wing a
+[06:42] bit stream so we need to know how long
+[06:47] it's really supposed to be and also the
+[06:49] number of notes for yeah for the when
+[06:56] checking the integrity
+
+[07:02] and yeah it's a bit there's a few steps
+[07:05] when building a hash preheader but we
+[07:10] have an initialization vector IV which
+[07:14] we initialize from RNG each time we
+[07:17] write it again and if we don't we
+[07:21] haven't generated an a file encryption
+[07:24] key we do that and encrypt it with the
+[07:28] trusted storage key and then the counter
+[07:34] in the media header is increased to make
+[07:36] sure that you see the new block not the
+[07:40] old one
+[07:42] we have authenticated data which is one
+[07:47] the input parameters for AES-GCM
+[07:50] algorithm which is the hash of the first
+[07:53] node and the count or the encryption key
+[07:57] and IV does some redundancy here but
+[08:00] it's to be safe and also not to change
+[08:04] the way we encrypt stuff compared to
+[08:08] before and then the output let's see so
+[08:16] we feed this into AES-GCM to encrypt and
+[08:21] we get a tag and encrypt the metadata
+[08:25] the tag is you can compare it with HMAC
+[08:30] for instance except that it's what we
+[08:34] used together with the encryption and
+[08:36] the encrypted metadata that is just the
+[08:40] same size as the plain text metadata
+[08:43] just encrypted and then we assemble that
+[08:46] the header as with the IV and tag
+[08:49] encrypted encryption key and encrypted
+[08:53] metadata and the counter
+
+[08:58] and the data blocks are encrypted as
+[09:04] before actually the the encrypted
+[09:10] independent of each other
+[09:11] but each time we encrypt block again
+[09:14] will generate a new IV from more energy
+[09:17] and P is the one plaintext data that we
+[09:23] are going to store and the file
+[09:27] encryption key is generated as for the
+[09:31] Asha hello also in the same way and the
+[09:37] a ID data is slightly different we have
+[09:40] only the file encryption key and an IV
+[09:43] that in there and so what we feed into
+[09:48] AES-GCM is plain text and a ID and up we
+[09:54] get the tag which is stored in the node
+[09:58] in this tree I showed earlier and the
+[10:01] encrypted data is stored as a separate
+[10:04] block yeah the ID is also stored in the
+[10:11] block of course to be able to decrypt
+
+[10:18] in order to support atomic updates we
+[10:22] need to have two version of each block
+[10:24] in order to switch between them updating
+[10:28] in case we are interrupted for one on
+[10:31] the other reason and it also means that
+[10:37] yeah it jumps like a transaction that is
+[10:41] atomic so we have two versions zero and
+[10:45] one and either and then we have one
+[10:51] version which we call it because the
+[10:53] active version and the other is the
+[10:55] inactive version and that is toggled all
+[10:59] the time while updating so when we write
+[11:04] a block again we will write in the
+[11:07] inactive book and once it's committed
+[11:10] and we update we will toggle this bit
+[11:13] and we will it will suddenly become the
+[11:16] active block instead so the diff the
+[11:21] different parts we need to take care of
+[11:22] is the hash free header hash freenode
+[11:25] and encrypt the data lock each one of
+[11:27] these has two versions
+[11:34] and finally we have the notes one which
+[11:38] is the top note which protects all the
+[11:42] notes below and those notes protects the
+[11:46] data block we write that as a last one
+[11:50] and then we can save the hash of that
+[11:53] and once we have done that then we have
+[11:57] effectively also done transaction so we
+[12:03] have the new data committed and we are
+[12:07] guaranteed to be able to read it again
+[12:12] it has and the steps for it to hit
+[12:18] storage media is via a non-secure world
+[12:20] so we don't have that much control over
+[12:24] exactly how it will end up there so it's
+[12:27] quite important that it's small steps we
+[12:32] take when we do it
+
+[12:41] and then in addition to that we have to
+[12:45] keep track of all the objects we have
+[12:48] because these objects just stored as a
+[12:52] binary file in normal world file system
+[12:56] and let's say that someone removes it or
+[12:59] yeah do whatever with it it can be hot
+[13:04] for us to see it insecure well so what
+[13:06] we have is an additional file where we
+[13:09] store and yeah it's like a database
+[13:11] where we store all the objects that we
+[13:15] have created and we identify it with the
+[13:19] UUID of the TA and an object identifier
+[13:23] object identifier is like a file name
+[13:25] but in global platform language instead
+[13:30] and then we have the hash of node one
+[13:35] which is the one that represents the
+[13:38] integrity of the entire Secours no
+[13:40] object and then we have also a file
+[13:44] number that is just a unique number that
+[13:47] is used to in the normal world file
+[13:51] system so an advantage with this is that
+[13:54] normal world can't really see which file
+[13:57] this is which ta it could belong to etc
+[14:01] so it it hides some information there
+[14:06] also that's good
+
+[14:12] and then the object list database itself
+[14:15] is of course also stored in in normal
+[14:17] world as a special file named dirf.db
+[14:20] it could have been anything but that's
+[14:22] what we have with RPMB available then
+[14:27] we will store the hash of node1 in this
+[14:30] file of this file in RPMB so that means
+[14:33] that the hash of node1 in the object
+[14:37] list database that one protects all the
+[14:40] objects that we have created ever and if
+[14:43] we can store that in RPMB then we have
+[14:46] a guarantee that it can't be rolled back
+[14:50] since yeah we have that - if our pen B
+[14:55] isn't available we will still have at
+[14:59] least have a consistent State so it
+[15:01] means that you can't roll back a single
+[15:03] file or remove a file or anything like
+[15:08] that so we have at least consistent
+[15:11] consistent history
+
+[15:18] yes we could but the yes that's correct
+[15:25] but they will limit the attack that you
+[15:27] can make so it's slightly better and
+[15:30] also maybe there's another way of
+[15:31] keeping track of this counter that could
+[15:34] make it harder to do brought back also
+[15:37] because RPMB is maybe not available
+[15:41] because it's a bit expensive 
+
+[15:58] emmc
+
+[15:58] yes so when we communicate with RPMB we
+[16:02] have a shared secret and it's MAC
+[16:05] messages that we exchange if we want to
+[16:11] protect the content from yes so no one
+[16:16] else can read it then we need to encrypt
+[16:18] and that's what we do also in certain
+[16:21] places sometimes it doesn't matter sir
+
+[16:28] so it means that when we communicate
+[16:31] with our PMB we do it by the linux
+[16:33] kernel and yeah it's like a secure channel
+
+[16:37] we use via normal world so we have still
+[16:46] some stuff left to do secure storage how
+[16:50] we deal with the RPMB that we don't
+[16:52] program the key unless we are debugging
+[16:57] or testing otherwise it's typical
+[17:00] production case so it should not be done
+[17:04] in a normally in a in a product and then
+[17:11] we can improve the derivation of the
+[17:13] keys but so far we don't have any good
+[17:18] reference hardware to do that with it
+[17:21] would be nice to have such a feature in
+[17:23] in OP-TEE to demonstrate that and then we
+[17:27] have these nodes like if the file is
+[17:35] large the secret storage file is large
+[17:37] they will adapt quite a lot of memory so
+[17:40] we could handle them in a more efficient
+[17:42] way maybe only read in keep those in
+[17:45] memory that we really need and so on
+[17:47] since typically you maybe update one
+[17:50] block and then you need all only the
+[17:52] parent nodes in order to update the
+[17:55] hashes and another thing could be to
+[18:00] store trusted applications in secure
+[18:03] storage also that would make it that
+[18:07] will solve the and rollback of a trusted
+[18:11] applications in a nice way and that's
+[18:15] actually something we are working with a
+[18:17] bit at the moment maybe we'll see it
+[18:20] next connect connect
+[18:24] yeah that was everything any further
+[18:28] questions yes
+
+[18:47] what store
+
+[19:46] yes that's correct
+[19:49] but you could on the other hand the TA
+[19:51] can serve a client in in normal world so
+[19:55] it could store keys for a client in
+[19:59] normal world but if we are talking about
+[20:03] thousands of keys maybe doesn't scale
+[20:06] well enough and we could need some other
+[20:09] solution because in the end what we do
+[20:13] with this because this secure object is
+[20:15] that we store it as ordinary files in
+[20:17] the file system so maybe that's a
+[20:20] chicken-egg problem also if these disks
+[20:25] are encrypted
+
+[20:32] highest Orem in RPMB instead
+
+[21:17] we have an RPMB big file system also yes
+[21:23] and he had one slide well I mentioned
+[21:28] multiple storage so it means that we
+[21:30] have both the normal default storage
+[21:33] which uses normal world file system but
+[21:36] we also have an RPMB storage that an
+[21:39] application can select to use as storage
+[21:41] in addition to the other one so that
+[21:44] means that you can create this a trusted
+[21:47] application that stores your keys in RPMB
+[21:51] and can retrieve retrieve them from
+[21:53] there also that could be maybe you need
+[21:59] yeah how this application gets into
+[22:02] memory if you can't read the file system
+[22:05] that's maybe something to think about
+[22:06] but I'm sure it's possible to do
+[22:09] something about that
+
+[22:23] other questions
+
+[22:49] yes and then suddenly there's another
+[22:52] TEE instead it doesn't support this and
+
+[23:02] yeah that could be nice and
+
+[23:17] yes and you don't need to expose the
+[23:19] keys even you only keep them in secure
+[23:23] world that's that's good
+
+[23:53] then it's yep
+
+[24:07] yeah that's that's a normal world yeah
+[24:12] it has to do that or it will yeah you
+[24:16] could consider it a denial-of-service
+[24:18] attack or something 
+
+[24:27] yeah you can do an explicit thing or whatever and since we
+[24:31] do it in quite separated steps
+[24:35] it shouldn't it it shouldn't be hard to
+[24:39] get that easy to keep it working I mean
+[24:43] it hasn't been complicated so far
+
+[24:59] I mean concurrent access to currently we
+[25:02] don't have that so all the access to
+[25:06] secure storage is serialized 
+
+[25:14] but it's yeah for the current operation to finish
+[25:17] so there's only one operation active at the time 
+
+[25:20] but they can have several tiers
+[25:26] can have files open and in in parallel
+[25:31] it's just that they when an actual
+[25:33] update is done then that is only done in sequence
+
+[25:45] okay thank you
+[25:51] [Applause]
+[25:54] [Music]
+

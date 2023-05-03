@@ -1,0 +1,787 @@
+[00:00] [Music]
+[00:19] with Huawei technology HiSilicon and
+[00:22] I'm a an assignee in the Linaro security
+[00:25] working group it's been almost a bit
+[00:28] more than two years now i think and also
+[00:32] i'm the current maintainer for OP-TEE so
+[00:37] my presentation will be about secure
+[00:39] storage a lots of thing I've been going
+[00:42] on in that area since last I mean
+[00:46] connecting San Francisco so i will be
+[00:50] showing you what's new since that time
+[00:53] and also what's left to be done because
+[00:55] there are things that have to be done so
+[00:59] the agenda is first of all i will
+[01:02] briefly show what is secure storage i
+[01:05] guess most of you already know i will
+[01:09] show you kind of a timeline to show when
+[01:11] features and modification have been
+[01:13] added to the OP-TEE and then i will focus
+[01:17] on the new features that have been added
+[01:19] in the last year so that includes the
+[01:23] framework for multiple storage backends
+[01:26] the RPMB replayed protected memory
+[01:30] block storage that's a very important
+[01:31] thing a proposal that we have that is
+[01:34] actually merged but that's still
+[01:36] experimental that's the SQLite
+[01:38] filesystem encryption updates and also
+[01:42] updates to the test framework obviously
+[01:45] and then my next slide in my last slide
+[01:47] will be about the next steps and it will
+[01:50] be open to your questions of course so
+[01:54] let's start with what is secure storage
+[01:56] so which is a persistent data store for
+[02:00] crypto keys or other application
+[02:02] specific data it is actually accessible
+[02:05] to trusted applications only so each TA
+[02:10] has its own storage that's what we call
+[02:13] a isolation the storage is also isolated
+[02:18] from the non-secure world that means
+[02:21] that for instance the Linux kernel
+[02:23] should not be able to tamper with the
+[02:25] data and in OP-TEE we are basically
+[02:32] implemented the global platform TEE
+[02:34] Internal Core API v1.1 that means
+[02:37] that all the purse extent access a
+[02:41] persistent storage function all those
+[02:43] exported by this API so this is chapter
+[02:47] five trusted storage api's and you can
+[02:51] see I think most of the functions that
+[02:53] are available so you can open object
+[02:58] create object close them read them right
+[03:00] then try and get them seek through the
+[03:02] data and also any merits all the data
+[03:06] that trusted application has created
+[03:09] nothing really fancy about that so here
+[03:15] is our timeline so as you see I've added
+[03:20] some boxes to show what kind of features
+[03:24] and modification had been made to the
+[03:27] code since "Connecting San Francisco" in
+[03:31] 2015 so with version 1.0.0 we
+[03:36] have slightly restructured the code to
+[03:40] have a struct tee_file_operations that
+[03:43] means that internally we are able to
+[03:45] implement different kind of storage
+[03:48] without changing too much inside the
+[03:51] code encryption has been added also and
+[03:55] the code has been modified to support to
+[03:58] better handle atomicity that means that
+[04:01] when an operation is going on inside
+[04:04] secure storage the specification
+[04:07] mandates that either it should succeed
+[04:10] or it should fail completely but you
+[04:12] cannot be left in a state where you have
+[04:15] partial modification of the data that's
+[04:18] not allow that by the specification and
+[04:20] obviously to implement to implement this
+[04:23] inside OP-TEE this required special
+[04:25] error handling
+[04:27] then with version 1.1.0
+[04:30] we have added some tests mainly
+[04:35] what I call corruption tests so that's
+[04:38] typically to verify that if the normal
+[04:43] world non-secure world attempts to
+[04:45] tamper with the data then the TEE will
+[04:47] be able to detect that and refuse to
+[04:50] expose the data to the trusted
+[04:52] application with version 2.0.0
+[04:57] we have introduced RPMB so that
+[05:00] was actually some code that had been
+[05:02] present since a long time and we have
+[05:06] received some contribution I think it
+[05:09] was from Microsoft yes who had reworked
+[05:13] that code and slightly before this
+[05:18] timeline the 2.0 timeline the
+[05:22] internal code had also already been
+[05:25] modified so we had to rework again their
+[05:27] contribution but in the end it means
+[05:29] that we have a functional RPMB support
+[05:32] for OP-TEE which is good then with the
+[05:36] version 2.1.0 we have
+[05:39] introduced Multiple Storage Support so i
+[05:41] will give more information about that in
+[05:43] a minute and what i've specified as next
+[05:47] is better TA isolation and SQLite
+[05:51] storage so that is that is code that is
+[05:53] already in the main line but since we
+[05:56] have not yet published a tag there's no
+[05:58] version identification yet and I will
+[06:02] explain what has been done also in that
+[06:04] area okay Multiple Storage Support so in
+[06:12] the beginning that is version 2.0
+[06:15] the storage was only the in the normal
+[06:20] world so we call that the "REE FS" 
+[06:23] rich execution environment file system
+[06:25] that is all the storage is in regular
+[06:28] files and directories that are created
+[06:31] by the Linux file system and application
+[06:36] trusted application access this storage
+[06:38] using
+[06:39] this identifier which is called 
+[06:41] TEE_STORAGE_PRIVATE this is what is
+[06:44] specified by the global platform api
+[06:49] then when RPMB came we needed a way
+[06:55] to introduce that properly in the the
+[06:59] code so we have added a compile-time
+[07:03] option at that point it was replacing
+[07:06] the REE FS implementation so either
+[07:09] you were on normal files or you were on
+[07:13] RPMB partition so that was kind of a
+[07:17] toggle that you would select with this
+[07:19] config option it was okay at that time
+[07:25] but then we started thinking about
+[07:28] refactoring the code to allow for more
+[07:31] flexible implementation of storage and
+[07:36] at that point that is 2.1.0
+[07:39] we have introduced compile time and
+[07:43] runtime selection of the storage back
+[07:45] end so what does that mean is that you
+[07:49] can build OP-TEE and select one or several
+[07:52] backend and storage backends so as I've
+[07:57] shown on the slide you can select the
+[07:59] REE FS and you can select the RPMB FS
+[08:04] simultaneously if you want so I've shown
+[08:06] the default configuration REE FS is yes
+[08:08] and RPMB is now in version 2.1.0
+[08:12] so that's for the compile time
+[08:16] part then comes the runtime part so when
+[08:20] you're writing a trusted application
+[08:21] you're using some IDs to access the
+[08:25] storage space the default one is 
+[08:30] TEE_STORAGE_PRIVATE it was it is equal to
+[08:33] one and we have added two private ones
+[08:37] which are in the range specified by the
+[08:40] global platform api for private
+[08:42] extensions the first one is 
+[08:46] TEE_STORAGE_PRIVATE_REE and the second one is
+[08:48] TEE_STORAGE_PRIVATE_RPMB so in effect a
+[08:51] trusted application can
+[08:53] select the exact underlying storage that
+[08:57] is used for for the secure data with the
+[09:02] with the default configuration the
+[09:04] private is implemented with the REE file
+[09:07] system so if you say private it's REE
+[09:10] and if you say RPMB it's RPMB unless
+[09:14] you disable the REE FS in which case
+[09:16] they private will be the only one that
+[09:18] is RPMB of course nothing really
+[09:21] complex at this point i guess but
+[09:24] introducing this mechanism for compile
+[09:28] time on runtime selection allowed us to
+[09:30] introduce yet another backend and this
+[09:33] is the SQLite storage so a new
+[09:38] compile-time flag CFG_SQL_FS which is
+[09:42] false by default and a new define for
+[09:46] runtime use by trusted applications so i
+[09:49] will explain now a bit more what are
+[09:52] these different kind of backends what
+[09:55] are their purpose purposes so RPMB
+[10:01] was at leading 2.0 as i said it was
+[10:04] some legacy code which has been reworked
+[10:09] you have three files may need to
+[10:11] implement that SVC storage RPMB FS
+[10:16] obviously and the key manager for
+[10:18] encryption and authentication of data we
+[10:21] have a file system layout which is quite
+[10:23] straightforward there is a final
+[10:26] allocation table which gives file names
+[10:29] and their location inside the partition
+[10:33] and then the five blocks
+[10:37] after once so we allocate the fat
+[10:42] from the bottom while the blocks are
+[10:45] allocated from the top and actually that
+[10:47] there's a very interesting thing from
+[10:50] the code point of view is that we are
+[10:52] reusing memory allocators to perform the
+[10:55] allocation of blocks on the file system
+[10:57] because allocating blocks of memory or
+[10:59] blocks of storage it's basically the
+[11:01] same thing so we're using tee_mm_alloc()
+[11:03] and tee_mm_alloc2() to perform that
+[11:06] that very fine allocation specific
+[11:18] things to emmc so the device ID is
+[11:22] selected at compile time for the moment
+[11:24] so by default it is 0 we define this in
+[11:30] the config.mk file that means that
+[11:32] the device that will be used is 
+[11:37] /dev/mmcblk0rpmb so that means that to
+[11:42] access RPMB we go through the normal
+[11:45] world and Emily we go through TEE
+[11:47] supplicant so there is no MMC driver
+[11:50] inside OP-TEE that that may be considered
+[11:55] as a limitation since for secure storage
+[12:01] ideally you want to endure everything in
+[12:03] the secret side to avoid any tampering
+[12:06] of the data but as I said with the RPMB
+[12:09] there is already encryption and
+[12:12] authentication so tampering and
+[12:14] eavesdropping is not a problem 
+
+[12:18] Now in the problem that remains with that implementation is that it is susceptible to denial of service attacks obviously.
+[12:26] So if for instance the user against root access to his device he can kill the TEE supplicant end and then the TEE the protected storage won't be  available anymore.
+[12:36] But that's something that we are not even trying to work around because this is in the architecture of OP-TEE to depend on the normal world for basic.
+[12:47] I mean scheduling for instance so we make sure that the secure data is secure cannot be modified cannot be read.
+[12:59] But we can't make hundred percent sure that it's not blocked by the normal world killing the supplicant or doing things like that.
+[13:09] So this is something I want you to point out and normally this is not an issue regarding security really.
+
+[13:19] another interesting thing is that since
+[13:21] tee-supplicant is the one who actually
+[13:24] accesses the RPMB partition through
+[13:27] the Linux kernel we have added some
+[13:30] emulation code so you can test the RPMB
+[13:33] code without having real RPMB device
+[13:36] and this is actually the default mode
+[13:39] when tee-supplicant is built there is a
+[13:43] variable in a make file that is set to
+[13:45] one or PM be a EMU so we emulate the ioctl()
+[13:50] that actually go to the emmc device
+[13:55] normally that's quite handy for testing
+
+[14:00] also one specific thing to RPMB is
+[14:04] that we have a key that is embedded in
+[14:06] the hardware in the current
+[14:09] implementation it is programmed on first
+[14:11] use that means that when OP-TEE is loaded
+[14:16] for the first time I mean when the
+[14:18] device is is is used for the first time
+[14:21] by OP-TEE then OP-TEE will detect that the
+[14:24] device is new and it will send the RPMB
+[14:28] key to the device so obviously that
+[14:31] is not the correct way of doing things
+[14:33] for a real product because it means that
+[14:35] you will be leaking the key through the
+[14:38] device just if it is replaced so this is
+[14:43] something that is currently not
+[14:45] conditionally compiled but we will fix
+[14:47] that in in a future release this is
+[14:49] really easy you should program the RPMB a
+[14:54] key in a trusted environment for
+[14:56] instance when leaving factory and then
+[14:59] the runtime real device real product
+[15:04] shouldn't be able to send its key
+[15:07] through the normal world obviously
+[15:14] okay so last slide I think on RPMB we
+[15:19] rely really on the RPMB interface for
+[15:23] atomicity so we have there are there are
+[15:30] requirements in the RPMB specification
+[15:33] that you can write to one block
+[15:35] atomically so we just make sure that
+[15:37] when we update update the data inside a
+[15:41] file we just make sure that we do the
+[15:44] things in the proper order so that if
+[15:47] the update fails there won't be any data
+[15:50] corruption so this means that we update
+[15:54] the fat as a last operation of course
+[15:57] and we copy data if we need to ensure
+[16:03] that data is properly updated for
+[16:08] instance when when you extend or when
+[16:10] you write some data inside the
+[16:13] file sometimes we have to copy and then
+[16:15] modify and then update the fat as far as
+[16:20] testing goes the code has been validated
+[16:22] on real hardware namely the 
+[16:24] HiKey board since grown all 4.8-rc1
+[16:29] there is a patch that has been upstream
+[16:33] to enable the proper capability in the
+[16:37] MMC controller so effectively you can
+[16:41] access the embedded MMC on the 
+[16:44] HiKey board  but you can also experiment
+[16:45] with external emmc modules and
+[16:48] that's what that's what I've done to
+[16:50] validate this code because you know when
+[16:53] you when you work with devices that are
+[16:56] designed to accept modification only
+[17:00] once like programming a key it's some
+[17:03] time difficult to be debugging because
+[17:04] if you do it wrong you break your device
+[17:07] so i had bought some adapters as I'm
+[17:10] shown on the screen that simply adapters
+[17:13] that low and MMC a cheap to be plugged
+[17:17] into the microSD interface that's quite convenient
+
+[17:20] now here is an architectural
+[17:26] slide so
+[17:27] let's let's go rapidly through it right
+[17:35] maybe if I can get the highlight here so
+[17:39] we have the secure world applications
+[17:47] are the TAs they are here they use the
+[17:53] trusted storage API so that's the
+[17:55] function that I've shown in the
+[17:56] beginning this is user mode code secure
+[17:59] user mode then we have system calls
+[18:01] inside OP-TEE that's what we call the
+[18:04] trusted storage service and then
+[18:07] underneath that layer we have the file
+[18:11] operation interface that I mentioned
+[18:13] earlier this is where the operation will
+[18:17] be dispatched depending on the ID of the
+[18:20] storage so if you're doing an operation
+[18:23] on the REE-based backend then it will go
+[18:26] this way if this is the RPMB file
+[18:29] system it will go this way and the key
+[18:32] manager code is mostly common to those
+[18:35] two implementations then we have an
+[18:43] interface with the normal world which is
+[18:44] here either an file operation interface
+[18:48] with the open write access close
+[18:52] read seek all we have a blog now RPMB
+[18:57] block interface which will also go
+[18:59] through the TEE driver to the 
+[19:01] TEE Supplicant and then at this point there's
+[19:03] another dispatch depending on the ID of
+[19:06] the storage so reading writing to the
+[19:09] file system or performing ioctl() to
+[19:12] the emmc driver and that's in this at
+[19:16] this point that we have also well here
+[19:18] where that we have also the emulation
+[19:20] capability of TEE supplicant.
+
+[19:28] now SQLite so as I mentioned briefly it
+[19:32] is a proposal to simplify and make the
+[19:37] implementation of the real REE file system
+[19:42] more robust because you have to propose
+[19:50] when you implement secure storage
+[19:51] operations have to be atomic so this
+[19:54] means that every time something can go
+[19:56] wrong you have to be able to roll back
+[19:59] to a stable situation which is the
+[20:01] previous one before the operation was
+[20:03] even started and that makes for quite a
+[20:07] big of complexity inside the code so the
+[20:12] idea with with the SQLite was that
+[20:15] instead of having this complexity in the
+[20:17] secure world we would rather have it in
+[20:20] the normal world that is mainly in TEE
+[20:23] supplicant and so the idea was to use
+[20:26] SQLite because it is a transaction
+[20:29] oriented API so you can start
+[20:31] transaction perform some modifications
+[20:34] and then commit the transaction or roll
+[20:37] it back that's quite interesting so this
+[20:41] is the general operation I show here SQL
+[20:46] FS begin transaction SQL FS complete
+[20:49] transaction with or without roll back
+[20:52] with this implementation instead of
+[20:55] having several files in the in the
+[20:57] normal rule file system we have one
+[20:58] database file which is by default this
+[21:01] path i'm showing here /data/tee/sstore.db
+[21:05] other than that all operations are similar
+
+[21:08] so the previous diagram is
+[21:16] almost unchanged except that now we have
+[21:22] this component here which is SQLite and
+[21:25] on top of SQLite we have a library call
+[21:28] leap SQL FS so the purpose of this
+[21:31] library is simply to export the SQL API
+[21:35] as a file system API regular POSIX one
+[21:38] like with open
+[21:39] seek etc so that's quite convenient
+[21:42] because that's exactly what we have in
+[21:44] the REE FS implementation so we can
+[21:46] replace that very easily
+
+[21:57] ok so regarding encryption that's a new feature that has
+[21:58] been added since San Francisco connect i
+[22:01] think it is turned on with a config
+[22:04] option which is shown here by default
+[22:08] it's enabled encryption is useful even
+[22:12] for RPMB obviously because as I said
+[22:14] the device is accessed through the
+[22:16] normal world so you don't want your
+[22:18] secure data to flow in the clear we also
+[22:26] use authenticated block encryption and
+[22:28] we have one keeper file which is the
+[22:32] file encryption key it is actually
+[22:36] generated it is encrypted using a
+[22:40] trusted storage key that is and and then
+[22:44] it is stored in the file metadata so
+[22:46] when we want to access some file we need
+[22:48] to have the file encryption key these
+[22:50] Keys simply in the meta data in the
+[22:52] header file but we have to decrypt it
+[22:55] obviously and this is done through the
+[22:59] secure world obviously and a trusted key
+[23:03] is used that is specific to each
+[23:04] application so this is a way to make
+[23:07] sure that all trusted application are
+[23:11] well isolated and a trusted app cannot
+[23:14] read the data or write the data of
+[23:16] neither trusted app so yeah I'll give a
+[23:20] bit more details there but then of
+[23:23] course the detail is in the code 
+
+[23:29] By the way the root of trust is a hardware unique key that is currently more or less hard-coded in the code.
+[23:33] So this is one part that you have to implement if you have your own platform to support real products.
+[23:40] you should modify the section that uses the predefined hardware unique key and adapt it may be to use a hardware crypto module also
+
+[23:57] so a few minor differences in the way
+[24:02] data on are encrypted for the REE FS
+[24:05] and the SQL FS meta data are always
+[24:09] authenticated and encrypted the data may
+[24:13] or may not be authenticated unencrypted
+[24:15] depending of the flag and mentioned
+[24:17] previously so by default it is both
+[24:19] authenticated and encrypted and the
+[24:21] algorithm is AES-GCM now for RPMB
+[24:26] this is a bit different since
+[24:28] authentication is already handled by the
+[24:31] RPMB protocol obviously so we keep the
+[24:34] simply the data encryption with the AES-CBC
+[24:37] with the ESSIV that means the
+[24:40] initialization vector is computed from
+[24:43] the block offset and a few other stuff
+[24:47] we are trying to keep with the standard
+[24:50] well known algorithm as always with
+[24:53] cryptography not trying to invent anything
+
+[24:55] xtest updates so yeah since we
+[25:03] have added a few features yeah yes it is
+[25:17] yeah yes up so what
+
+[25:22] Why is encryption optional I think basically this is just for debug purposes.
+[25:24] You don't want in any case to disable encryption on a real product
+[25:30] This is simply that when you're debugging stuff it's much easier to see what's actually going through the interfaces when it's not rooted obviously.
+[25:40] But I think in the future we plan to rework again the code.
+[25:46] I will show that in the next steps and possibly this encryption stuff will go.
+[25:52] It will be always encrypted.
+[25:54] And if you don't want a shun you will change the code by hand because it's a bit confusing.
+
+[26:01] so about xtest now we test also brought it
+[26:03] backends so that means that if during
+[26:06] building OP-TEE you have enabled all three
+[26:09] backends REE FS, RPMB FS and SQL FS then
+[26:14] all of them will be will end up in the
+[26:18] configuration file and xtest will be
+[26:21] billed accordingly and it will run the
+[26:23] test on all the backends we have added a
+[26:26] specific test for storage isolation this
+[26:30] is the 6015 so the purpose is to test
+[26:34] that actually two TAs cannot share any
+[26:37] data the way it works is that we use the
+[26:43] REE file system and we feed our around
+[26:47] with the files in the normal world file
+[26:51] system so we move five blocks and we
+[26:54] move files from one directory to another
+[26:57] one that is basically trying to simulate
+[27:00] what an attacker would do and then we
+[27:03] check that actually the TEE would refuse
+[27:05] to open the data and report some corrupt
+[27:07] data status we've also added a
+[27:12] concurrency test so support for multiple
+[27:15] concurrent access to trusted storage was
+[27:20] not there before so we added the proper
+[27:23] locking and we also developed a test for
+[27:26] that so we have four threads running in
+[27:29] a loop
+[27:29] the invoking storage TA to create verify
+[27:35] right verify and delete data on distinct
+[27:39] objects obviously otherwise there would
+[27:41] be conflict but this has to be
+[27:45] successful as long as the TA accesses
+[27:51] separate data files basically so we have
+[27:54] a TA with multi-session flag and we run
+[27:57] that test yeah
+
+[28:19] yes if you well if you want to share
+[28:22] data with another TA I think the global
+[28:27] platform interface does not really allow
+[28:31] this I mean you have to come up with
+[28:34] your own design to do that and such as
+[28:37] you may have one TA that is responsible
+[28:39] for the storage and use calls from one
+[28:43] TA or the other because you can do that
+[28:45] there is a TA API in their internal API
+[28:49] that allows you to create session into
+[28:52] another TA so you can probably come up
+[28:55] with a protocol and address that
+[28:58] properly but other than that the TA
+[29:00] won't be able to open the data of the
+[29:02] other one yep
+
+[29:18] the question is about isolation in SQL
+[29:30] sorry I don't get that maybe could you
+[29:32] yeah yep exactly so yeah there is only
+[29:42] one database file for the SQLite file
+[29:44] system but concurrent access is handled
+[29:47] by proper protection with me Oh texts
+[29:49] inside OP-TEE so we are guaranteed that
+[29:52] we won't update the database
+[29:54] simultaneously and then as far as TA
+[29:58] separation goes this is under by the
+[30:01] proper cryptography so that the data are
+[30:04] not usable by another TA simply so
+[30:07] regarding access to the database itself
+[30:10] it's handled by your mutex that's it so
+
+[30:18] yeah I think that's my last line so it's
+[30:20] called what's next as I mentioned we
+[30:25] will fix that kind of feature of the RPMB
+[30:29] code that will automatically program
+[30:31] the key when it's not already available
+[30:34] that's not desirable I think so we will
+[30:38] put that put that under conditional
+[30:41] compilation we would like also to
+[30:47] improve the derivation of the secure
+[30:49] storage key from the hardware unique key
+[30:51] because as I said we have some template
+[30:53] code that uses some hard coded value
+[30:55] just to make the things go but it would
+[30:59] be nice to have an example of how
+[31:02] hardware crypto module could be
+[31:04] integrated in that and unfortunately we
+[31:07] are kind of lacking documentation on on
+[31:09] the hardware modules of the platforms we
+[31:12] traditionally support such as HiKey
+[31:14] for instance so for the moment we have
+[31:17] no such driver upstream and then we
+[31:20] can't give real useful example code that
+[31:26] might not be a big issue for guys who
+[31:29] know the platform very well but I think
+[31:32] it would be still nice to give something
+[31:34] more closer to the real product then
+[31:39] there's the question of the 
+[31:40] anti-rollback protection and controlled rollback
+[31:42] that's probably a tricky
+[31:45] question to address about preventing TA
+[31:51] impersonation because yeah that's also a
+[31:53] very important point the secure storage
+[31:57] is isolated that means TA number one
+[32:03] will never be able to access the data of
+[32:06] TA number two but what happens if da
+[32:09] number two can show itself as if it was
+[32:13] da number one that means we want to make
+[32:17] sure that someone who can develop TA
+[32:21] let's say TA number one will not be able
+[32:24] to reuse the same signature keys to
+[32:28] create another TA that will mimic the ID
+[32:31] of the first one and hence be able to
+[32:33] access the data so this is a very
+[32:36] generic generic problem this is this is
+[32:42] related to the way that TA are
+[32:45] authenticated so for the moment we have
+[32:48] a signature which is based on a on a
+[32:51] root of trust key that we have inside
+[32:53] the OP-TEE and there is only one key so
+[32:56] effectively there is only one way of
+[32:58] signing TAs which means that trying to
+[33:01] isolate data is a bit not really
+[33:05] possible currently so we know that
+[33:08] people using OP-TEE for real product
+[33:11] development will modify this signature
+[33:13] mechanism for TAs obviously and it
+[33:16] would be probably nice to have some way
+[33:18] of modifying I mean if we show more
+[33:24] reasonable ways of signing a TA with
+[33:27] maybe to level 2 levels with a root key
+[33:30] and developer keys or something like
+[33:32] that it might make things a little bit
+[33:35] easier for guys taking OP-TEE and then
+[33:39] creating real products so this is for
+[33:41] further discussion another point is
+[33:44] further code simplification so actually
+[33:47] we already have a pull request open and
+[33:49] a few simplifications are are on their
+[33:51] way mainly this involves
+[33:55] avoiding too many too many calls into
+[33:59] the normal world because for instance we
+[34:02] require a call to allocate memory
+[34:05] sometimes we use we access the file
+[34:09] system to make sure a file exists or not
+[34:11] then we open it then then we update the
+[34:15] data then we close it most of the time
+[34:18] this could be reduced and simplified so
+[34:20] the code would be easier to maintain
+[34:22] first and then also the performance
+[34:24] would be probably much better because
+[34:27] there is a cost each time the OP-TEE calls
+[34:31] into the normal world obviously to get
+[34:33] some operation done by the supplicant so
+[34:36] we are going to improve on that and my
+[34:41] nice point is well it's a bit of a
+[34:43] question to you actually this is this
+[34:46] SQL FS proposal do you think that it's
+[34:49] useful should it replace the REE FS
+[34:53] or or maybe should it still be another
+[34:58] another option because at the beginning
+[35:01] it was meant to simplify the code but if
+[35:03] we keep the old code and at new one
+[35:05] that's not really simplifying anything I
+[35:08] guess so yeah that's it for my
+[35:13] presentation so if you have any
+[35:15] questions or comments please go ahead
+
+[35:21] yeah I think there's a second Mike maybe
+[35:26] four
+[35:38] you
+
+[35:41] so one of the challenges I personally
+[35:44] faced is fitting everything into a
+[35:47] secure SRAM only only optic code
+[35:53] talking about the TA with just putting
+[35:56] the OP-TEE OS code into a security SRAM so
+[36:01] giving that in mind have you done any
+[36:03] analysis what is the impact on memory
+[36:05] footprint when we start implementing or
+[36:07] but once you've already implemented
+[36:08] these new file system supports 
+
+[36:12] so you're concerned about memory footprint of
+[36:14] those those features well to be honest
+[36:19] that's not really something we have
+[36:21] monitored closely the yeah maybe against
+[36:25] has some more information at that 
+
+[36:30] of course City increases footprint but it's
+[36:33] mainly code that can be paged out so
+[36:36] it's like maybe that's a slightly higher
+[36:38] pressure on on the paging but it's
+[36:42] probably quite small 
+
+[36:50] yeah and in any case we try to make everything more or
+[36:53] less optional and configurable this the
+[36:56] whole purpose of this CFG variables is
+[37:00] ready to make it possible for you to
+[37:02] activate only the feature you want so if
+[37:05] you consider that the REE FS is just
+[37:07] enough for you or maybe RPMB you can
+[37:10] just scratch the overall other
+[37:11] implementations and go with a simpler
+[37:14] and a smaller footprint obviously 
+
+[37:18] second question we talked about three different
+[37:20] options for the storage in one of the
+[37:23] discussions during this way with some
+[37:25] people were thinking of the idea where
+[37:28] you storage some of your keys on the on
+[37:30] the cloud and can one of our options
+[37:34] again this is completely throwing
+[37:38] something into this session is do you
+[37:41] see that as a feasibility that we
+[37:42] provide that as a standard option in
+[37:45] OP-TEE so that people can store their data
+[37:49] or keys on the cloud itself
+
+[37:53] so so I guess the question is about yeah
+[37:58] opening to other storage possibly over
+[38:02] the network and so TAs can do that
+[38:05] using their own Lucy and the
+[38:06] implementation I'm talking about some
+[38:08] standardized interface so that every C&T
+[38:11] a doesn't have to implement the same thing
+
+[38:12] I don't know of any standardized
+[38:16] interface to to do that but yeah we're
+[38:22] open to suggestion I mean
+
+[38:43] especially in the use cases like DRM
+[38:46] where do you do have a connection to the
+[38:47] network where you do I mean they're a
+[38:51] lot of key exchanges happen and if there
+[38:53] is apprehension about storing something
+[38:55] on local device some people may not
+[38:58] trust storing in a encrypted non-secure
+[39:02] world file system 
+
+[39:07] again this is not saying that is something we must do is
+[39:10] it worth even talking about is the
+[39:12] question yeah 
+
+[39:15] well obviously drm has its own set of rules and requirements and I
+[39:19] think what's needed in the end is a
+[39:23] solid support for secure storage and if
+[39:26] you use I mean for instance RPMB our
+[39:30] current implementation and and use it
+[39:32] properly I think you should be able to I
+[39:35] mean with the proper key management you
+[39:38] should be able to fulfill all the
+[39:39] requirements yeah but obviously
+[39:42] sometimes it means that you have to
+[39:44] extend the upstream code with the
+[39:47] property management so that the keys the
+[39:50] root key for instance is never exposed
+[39:52] to software that's the basic requirement
+[39:54] that we don't have upstream as i said
+[39:55] but is which is really useful for real
+[39:58] products that's just a matter of moving
+[40:02] a few lines around in the code and
+[40:03] hopefully it should not be a problem
+
+[40:18] any other questions or comments or yep
+
+[40:26] so the design fundamentally depends on
+[40:31] the new world for skill storage I just
+[40:34] want to give firm you see any future
+[40:36] need for OP-TEE itself to store some data
+
+[40:45] sorry I didn't get that it means to you
+[40:48] OP-TEE OS using secure storage for its own needs
+
+[40:51] correct before the RSS started
+
+[40:54] yeah i mean they the the storage API
+[41:03] is also available internally to the to
+[41:07] the TEE through a very simple mechanism
+[41:10] that we call static TAs so what it means
+[41:14] is that you can compile and Link a bit
+[41:17] of code as statically with the OP-TEE
+[41:20] kernel the OP-TEE Core and accessed
+[41:25] as if it were standard trusted
+[41:28] application so that means that in
+[41:30] particular this piece of code can use
+[41:34] well the code inside because the the
+[41:37] OP-TEE OS of course and it can export
+[41:41] functions and be called like like a
+[41:44] regular trusted application so they kept
+[41:46] this can make things quite quite useful
+[41:49] for for integration with other TAs or or
+[41:52] or any other code okay
+
+[42:02] anyone else
+
+[42:13] yeah exactly about the performance
+[42:16] currently we know that things are not
+[42:19] that great I mean it's visible when we
+[42:22] run the tests that especially some
+[42:25] implementations of the file system
+[42:26] backends are faster than others and all
+[42:29] of them may be relatively slow I would
+[42:32] say but that's something we are working on definitely
+
+[42:34] perhaps just one more yep
+
+[42:40] Iraq you mentioned the encryption
+[42:42] algorithms and other algorithms standard
+[42:44] are they performing too yeah 
+
+[42:47] sorry I can't hear you I just know the big
+
+[42:49] Gators speak a bit louder sorry the
+[42:54] encryption algorithms you use that we
+[42:57] conform to any standard I mean just the
+[42:59] global platform specification mandates
+[43:01] and standards of key strengths and
+[43:03] things like that or is it some other
+[43:05] guideline fine and I asked you know 
+
+[43:08] I don't think the global platform mandates
+[43:12] anything regarding encryption for
+[43:14] trusted storage because they're just
+[43:16] their basic requirement is that the data
+[43:18] are accessible only to the secure well
+[43:21] that's you do as you want but it's so
+[43:25] it's a bit specific to the fact that we
+[43:27] go through the normal world that we need
+[43:29] some encryption and then as I said we're
+[43:32] using the well known algorithm because
+[43:35] we know that they are not float
+[43:36] basically but then regarding any key
+[43:41] lengths or constraints we we that's our
+[43:44] choice basically yeah
+
+[44:14] okay I think we're done thank you very
+[44:18] much for attending this session
+[44:21] [Music]
+[44:27] [Music]
+

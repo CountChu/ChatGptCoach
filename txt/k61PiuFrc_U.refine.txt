@@ -1,0 +1,374 @@
+[Music]
+[Music]
+hello and welcome to my presentation on
+a secure storage in OP-TEE i'm Jens Wiklander
+Linaro security working group
+the last release of OP-TEE we have some
+significant updates in secure storage 
+
+so it was time to make another report to
+bring people up to date so I start with
+a yeah the agenda is what is
+secure storage just a recap from
+previous sessions and the timeline on
+when we have introduced different
+features encryption keys that scheme
+isn't really changed but it's important
+so I will do a recap on that then we
+have the new way of dealing with secure
+objects and and the anti rollback that
+we use RPMB before 
+
+so what is secure storage it's where we store objects and
+keys for a TA and it should be only
+accessible for that particular TA and no
+one else should be able to manipulate
+with the objects or even see what's in
+them preferably not be able to tell very
+much at all about the objects and then
+we since we OP-TEE
+we are working with the platform api s--
+so we support all the ordinary global
+platform API used for manipulating
+objects
+
+and as you can see here we have improved
+secure storage over time last presentation
+I think was at the 2.1 with the multiple
+storage support after that we have
+improved isolation between TAs and
+simplified parts of the implementation
+with and then after that improve the
+integrity with the hash tree which I'm
+going to talk about today and finally
+also use RPMB for anti rollback protection
+
+so the encryption keys each
+secure object is encrypted with a file
+encryption key which is unique from that
+file it's when a new file is created
+this file is generated and the file
+encryption key itself is also stored
+inside the key and then encrypted with
+the trusted application storage key
+which is unique per application and it's
+in its term derived from the secure
+storage key which in its turn is derived
+from the hardware unique key
+
+so the hash tree this is it's nothing to
+get interesting it's a complete binary
+tree meaning that all the higher levels
+in the tree is full and we feel from
+left to right so thus no gaps thus
+always I mean note 1 to 6 if you have
+that you will always have a node 5 also
+so we have no holes in the sequence of
+nodes and each node is used to protect
+the different blocks that the secured
+object itself is built up from I will
+come to that in in later slides and we
+use AES-GCM as encryption and integrity
+protection of the content of the files
+so we have a tag and an IDE that we need
+to keep track of and that's what we put
+in the nodes and then the parent nodes
+keep an hash of the children nodes and
+so on that's how we scale it so it means
+that we don't have to have a fixed
+number of nodes or anything it's just
+the amount of memory that limits us a
+curious thing is that we start counting
+the node from one and the data box from
+zero it's because it's easier when
+traversing the tree if we account like
+that but it means also that node1
+corresponds to block 0 but that's not so
+hard to keep track of
+
+and then at the beginning on each now
+we're talking about the how the file
+looks in in the binary format so at the
+beginning of each secure object we have
+a hash free header which contains the
+encrypted key the that I spoke about
+earlier I mean the it's the key that is
+used to decrypt the object in the end
+but it's stored in the file and a
+counter which isn't really used for and
+to rollback but it's used if you don't
+have any role at the end you can find
+the latest generation of the header at
+least and then we have a metadata that
+holds the entire length of the of the
+object since it's built up from blocks
+and the application expects its wing a
+bit stream so we need to know how long
+it's really supposed to be and also the
+number of notes for yeah for the when
+checking the integrity
+
+and yeah it's a bit there's a few steps
+when building a hash preheader but we
+have an initialization vector IV which
+we initialize from RNG each time we
+write it again and if we don't we
+haven't generated an a file encryption
+key we do that and encrypt it with the
+trusted storage key and then the counter
+in the media header is increased to make
+sure that you see the new block not the
+old one
+we have authenticated data which is one
+the input parameters for AES-GCM
+algorithm which is the hash of the first
+node and the count or the encryption key
+and IV does some redundancy here but
+it's to be safe and also not to change
+the way we encrypt stuff compared to
+before and then the output let's see so
+we feed this into AES-GCM to encrypt and
+we get a tag and encrypt the metadata
+the tag is you can compare it with HMAC
+for instance except that it's what we
+used together with the encryption and
+the encrypted metadata that is just the
+same size as the plain text metadata
+just encrypted and then we assemble that
+the header as with the IV and tag
+encrypted encryption key and encrypted
+metadata and the counter
+
+and the data blocks are encrypted as
+before actually the the encrypted
+independent of each other
+but each time we encrypt block again
+will generate a new IV from more energy
+and P is the one plaintext data that we
+are going to store and the file
+encryption key is generated as for the
+Asha hello also in the same way and the
+a ID data is slightly different we have
+only the file encryption key and an IV
+that in there and so what we feed into
+AES-GCM is plain text and a ID and up we
+get the tag which is stored in the node
+in this tree I showed earlier and the
+encrypted data is stored as a separate
+block yeah the ID is also stored in the
+block of course to be able to decrypt
+
+in order to support atomic updates we
+need to have two version of each block
+in order to switch between them updating
+in case we are interrupted for one on
+the other reason and it also means that
+yeah it jumps like a transaction that is
+atomic so we have two versions zero and
+one and either and then we have one
+version which we call it because the
+active version and the other is the
+inactive version and that is toggled all
+the time while updating so when we write
+a block again we will write in the
+inactive book and once it's committed
+and we update we will toggle this bit
+and we will it will suddenly become the
+active block instead so the diff the
+different parts we need to take care of
+is the hash free header hash freenode
+and encrypt the data lock each one of
+these has two versions
+and finally we have the notes one which
+is the top note which protects all the
+notes below and those notes protects the
+data block we write that as a last one
+and then we can save the hash of that
+and once we have done that then we have
+effectively also done transaction so we
+have the new data committed and we are
+guaranteed to be able to read it again
+it has and the steps for it to hit
+storage media is via a non-secure world
+so we don't have that much control over
+exactly how it will end up there so it's
+quite important that it's small steps we
+take when we do it
+
+and then in addition to that we have to
+keep track of all the objects we have
+because these objects just stored as a
+binary file in normal world file system
+and let's say that someone removes it or
+yeah do whatever with it it can be hot
+for us to see it insecure well so what
+we have is an additional file where we
+store and yeah it's like a database
+where we store all the objects that we
+have created and we identify it with the
+UUID of the TA and an object identifier
+object identifier is like a file name
+but in global platform language instead
+and then we have the hash of node one
+which is the one that represents the
+integrity of the entire Secours no
+object and then we have also a file
+number that is just a unique number that
+is used to in the normal world file
+system so an advantage with this is that
+normal world can't really see which file
+this is which ta it could belong to etc
+so it it hides some information there
+also that's good
+
+and then the object list database itself
+is of course also stored in in normal
+world as a special file named dirf.db
+it could have been anything but that's
+what we have with RPMB available then
+we will store the hash of node1 in this
+file of this file in RPMB so that means
+that the hash of node1 in the object
+list database that one protects all the
+objects that we have created ever and if
+we can store that in RPMB then we have
+a guarantee that it can't be rolled back
+since yeah we have that - if our pen B
+isn't available we will still have at
+least have a consistent State so it
+means that you can't roll back a single
+file or remove a file or anything like
+that so we have at least consistent
+consistent history
+
+yes we could but the yes that's correct
+but they will limit the attack that you
+can make so it's slightly better and
+also maybe there's another way of
+keeping track of this counter that could
+make it harder to do brought back also
+because RPMB is maybe not available
+because it's a bit expensive 
+
+emmc
+
+yes so when we communicate with RPMB we
+have a shared secret and it's MAC
+messages that we exchange if we want to
+protect the content from yes so no one
+else can read it then we need to encrypt
+and that's what we do also in certain
+places sometimes it doesn't matter sir
+
+so it means that when we communicate
+with our PMB we do it by the linux
+kernel and yeah it's like a secure channel
+
+we use via normal world so we have still
+some stuff left to do secure storage how
+we deal with the RPMB that we don't
+program the key unless we are debugging
+or testing otherwise it's typical
+production case so it should not be done
+in a normally in a in a product and then
+we can improve the derivation of the
+keys but so far we don't have any good
+reference hardware to do that with it
+would be nice to have such a feature in
+in OP-TEE to demonstrate that and then we
+have these nodes like if the file is
+large the secret storage file is large
+they will adapt quite a lot of memory so
+we could handle them in a more efficient
+way maybe only read in keep those in
+memory that we really need and so on
+since typically you maybe update one
+block and then you need all only the
+parent nodes in order to update the
+hashes and another thing could be to
+store trusted applications in secure
+storage also that would make it that
+will solve the and rollback of a trusted
+applications in a nice way and that's
+actually something we are working with a
+bit at the moment maybe we'll see it
+next connect connect
+yeah that was everything any further
+questions yes
+
+what store
+
+yes that's correct
+but you could on the other hand the TA
+can serve a client in in normal world so
+it could store keys for a client in
+normal world but if we are talking about
+thousands of keys maybe doesn't scale
+well enough and we could need some other
+solution because in the end what we do
+with this because this secure object is
+that we store it as ordinary files in
+the file system so maybe that's a
+chicken-egg problem also if these disks
+are encrypted
+
+highest Orem in RPMB instead
+
+we have an RPMB big file system also yes
+and he had one slide well I mentioned
+multiple storage so it means that we
+have both the normal default storage
+which uses normal world file system but
+we also have an RPMB storage that an
+application can select to use as storage
+in addition to the other one so that
+means that you can create this a trusted
+application that stores your keys in RPMB
+and can retrieve retrieve them from
+there also that could be maybe you need
+yeah how this application gets into
+memory if you can't read the file system
+that's maybe something to think about
+but I'm sure it's possible to do
+something about that
+
+other questions
+
+yes and then suddenly there's another
+TEE instead it doesn't support this and
+
+yeah that could be nice and
+
+yes and you don't need to expose the
+keys even you only keep them in secure
+world that's that's good
+
+then it's yep
+
+yeah that's that's a normal world yeah
+it has to do that or it will yeah you
+could consider it a denial-of-service
+attack or something 
+
+yeah you can do an explicit thing or whatever and since we
+do it in quite separated steps
+it shouldn't it it shouldn't be hard to
+get that easy to keep it working I mean
+it hasn't been complicated so far
+
+I mean concurrent access to currently we
+don't have that so all the access to
+secure storage is serialized 
+
+but it's yeah for the current operation to finish
+so there's only one operation active at the time 
+
+but they can have several tiers
+can have files open and in in parallel
+it's just that they when an actual
+update is done then that is only done in sequence
+
+okay thank you
+[Applause]
+[Music]
+

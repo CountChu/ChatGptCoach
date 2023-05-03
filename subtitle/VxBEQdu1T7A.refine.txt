@@ -1,0 +1,586 @@
+[00:02] hello everyone i'm Ruchika gupta i'm
+[00:04] working as a tech lead with security
+[00:06] working group in Linaro
+[00:08] i have Etienne with me yeah hello Ruchika
+[00:11] hello everybody
+[00:13] thanks for watching this video i am
+[00:16] Eitenne Carriere i work for
+[00:18] ST microelectronics and work also with
+[00:21] Linaro as an assignee this talk is about
+[00:24] pkcs 11 in
+[00:25] OP-TEE it's a story that started
+[00:28] a few years ago like three or four years
+[00:31] ago
+[00:32] and since last year is something really
+[00:34] effective
+[00:35] in the octi project so we will present
+[00:38] you
+[00:39] first well what is the pkcs
+[00:42] specification
+[00:43] and what is the OP-TEE and how OP-TEE can
+[00:46] leverage pkcs or pkcs can leverage OP-TEE
+[00:51] afterward we'll make a short status on
+[00:52] the latest OP-TEE tag that was released
+[00:55] and we'll go through a bit of details uh
+[00:59] in the uh client library and the trusted
+[01:02] application architecture
+[01:04] i will show you the next steps
+[01:05] afterwards Ruchika
+[01:09] so now let's begin with an overview of
+[01:12] the pkcs 11 specification
+[01:14] so what is pkcs11 it is a platform
+[01:16] independent api that can be used to
+[01:18] manage
+[01:19] and use the cryptographic security
+[01:20] hardware now what is this hardware this
+[01:22] can be
+[01:23] smart card usb keys and even remote hsms
+[01:27] so what pkcs 11 does is it abstracts the
+[01:30] specific
+[01:31] detail of the underlying communication
+[01:33] between the application and the
+[01:34] cryptographic hardware
+[01:36] now this communication can be over a
+[01:38] hardware bus maybe
+[01:39] i2c spy or even uh over a network with a
+[01:43] remote sperm there
+[01:44] which is running on a crypto device uh
+[01:46] now what does the client application do
+[01:48] it calls the pkcs 11 api
+[01:50] which is either provided by a vendor
+[01:52] specific or a common crypto key library
+[01:54] and which then calls into a kernel
+[01:56] driver which communicates with this
+[01:58] remote firmware
+[02:00] in this specification these devices are
+[02:02] usually referred to as tokens
+[02:03] and that is how we will be referring to
+[02:05] them as we move forward in the
+[02:07] presentation
+[02:08] uh the pkcs 11 apis allow the
+[02:10] applications to manage the cryptographic
+[02:12] objects on the token
+[02:13] so these objects can be key certificates
+[02:16] or data
+[02:17] and by management the applications can
+[02:20] create
+[02:20] modify or destroy these objects then
+[02:23] application can also call the Cryptoki
+[02:25] apis to use these objects for various
+[02:27] crypto operations like maybe ciphering
+[02:29] or authentications
+[02:31] uh with respect to user authentication
+[02:34] the token allows two types of user
+[02:36] uh one is security officer or a normal
+[02:38] user
+[02:39] so the user can authenticate itself to
+[02:41] the token either with a pin
+[02:43] or alternate needs so a pkcs 11
+[02:46] is no doubt a popular standard which is
+[02:48] used by many hsms
+[02:50] so before we move forward uh it in will
+[02:53] help introduce our audience to some
+[02:54] packages
+[02:55] uh which can interface with these pkcs
+[02:57] 11 apis otu Etienne
+[03:00] yeah thank you yes pkcs 11
+[03:03] api is already used in uh some
+[03:07] well-known packages like OpenSSH
+[03:11] gnuTLS also has a pkcs
+[03:14] interface python has a pkcs library
+[03:18] and there are also packages like
+[03:20] OpenSSL with
+[03:21] which does not provide a native pkcs11
+[03:24] engine but there's an alternate uh
+[03:27] package that proposed one and that is
+[03:29] used already by well-known distributions
+[03:31] and
+[03:32] and hopefully OP-TEE also will support
+[03:35] uh
+[03:35] pkcs 11 just remember that pkcs 11 is a
+[03:39] standard it's well known and well used
+[03:41] but we must be very careful when
+[03:43] implementing the features
+[03:45] so that it's well implemented and if
+[03:47] there's some
+[03:48] weaknesses in the specifications it's
+[03:50] addressed uh before there's a new
+[03:52] release of the speaker
+[03:54] specification right and
+[03:57] now as we kind of move in how this is
+[03:59] implemented in OP-TEE
+[04:01] let's talk in brief about what OP-TEE is
+[04:04] i'm sure
+[04:04] audience already knows about that but
+[04:06] just a brief overview
+[04:08] so OP-TEE is a trusted execution
+[04:09] environment which is uh designed as a
+[04:11] companion to the non-secure world linux
+[04:14] running on cortex a cpus using arm trust
+[04:16] zone
+[04:17] and uh let's uh talk in brief about the
+[04:20] various OP-TEE components so it includes
+[04:23] on the linux side a user space safe
+[04:25] based library
+[04:26] which exposes the global platform apis
+[04:28] which the client can use
+[04:29] and a TA driver for the communication so
+[04:32] the client apps talks to the
+[04:34] corresponding trusted application which
+[04:36] are there on the secure world side
+[04:37] and the on the TA side you have a user
+[04:40] space library which exposes various apis
+[04:42] like crypto apis object management apis
+[04:44] for the tas to use
+[04:46] now uh you might be wondering i mean if
+[04:49] we already have these crypto and the
+[04:50] object management apis available then
+[04:52] why do we need
+[04:53] a generic pkcs 11 api global platforms
+[04:57] TEE specification does not provide
+[04:59] cryptographic objects or operation
+[05:01] available to the client application it's
+[05:04] only the internal
+[05:05] trusted application libraries and apis
+[05:08] that allow such objects
+[05:10] and for a client to manipulate all those
+[05:13] features from the opt we need a clear
+[05:17] api exposed to the client so this is
+[05:20] where
+[05:21] the pkcs 11 api can really fill the gap
+[05:25] between clear objects and operations
+[05:28] visible from the client
+[05:30] and the way we can handle such
+[05:34] objects in the in the secure world
+[05:37] so basically we are helping the uh
+[05:40] users i mean not to kind of reinvent the
+[05:42] key management apis perhaps
+[05:44] and use a ready-made available pkcs11
+[05:46] apis
+[05:47] now uh let's move towards the design how
+[05:49] the design for the pkcs
+[05:51] token and the Cryptoki library looks
+[05:55] so we've already talked about uh the two
+[05:57] components of the
+[05:58] with the OP-TEE so one is the client side
+[06:00] component and one is the trusted
+[06:01] application side
+[06:03] so what we have is we have a
+[06:05] libckteec
+[06:06] that is the Cryptoki library
+[06:09] which is equivalent to a crypto key
+[06:10] library which is available
+[06:12] uh from Op-TEE client and then we have a
+[06:15] trust corresponding trusted application
+[06:17] uh so it's available in the OP-TEE os
+[06:19] which acts as a remote enclave or a
+[06:21] remote uh
+[06:22] hardware token and we also provide an
+[06:25] exchange which are there in the update
+[06:27] test
+[06:28] so libckteec in short is a crypto library
+[06:31] which exposes the pkcs11 apis to the
+[06:33] client
+[06:34] application it's hosted in optee_client.git
+[06:37] and it converts the crypto apis to the
+[06:39] global platform
+[06:40] um apis in invoke commands
+[06:43] so and what we have is we have a pkcs11
+[06:46] token which is emulated by a TA
+[06:48] in OP-TEE so code is available in
+[06:50] optee_os.git for that
+[06:52] so this is just a brief overview of the
+[06:54] components uh which are there
+[06:56] here for the pkcs11 token
+[07:00] yes and with this setup well it's uh
+[07:03] it's a huge setup and a lot of features
+[07:05] and things to be exposed easy to the
+[07:07] client
+[07:08] and things to be implemented in the uh
+[07:10] in a trusted application
+[07:12] uh so it's uh those stories that started
+[07:15] more than three years
+[07:16] ago it was presented like in
+[07:21] 2019 at the hong kong
+[07:24] Linaro Connect and the project
+[07:27] just matured a bit uh
+[07:30] to get more features in and we started
+[07:34] thinking on
+[07:35] how to review uh this piece of code
+[07:37] because it was a quite
+[07:39] big amount of lines of code to be
+[07:41] reviewed and
+[07:42] fully maintained by the OP-TEE project
+[07:45] so last year Linaro decided to put an
+[07:48] effort on
+[07:50] making a deeper review of this code and
+[07:54] bringing
+[07:54] it to the upstream and now we are achieved
+[07:58] uh we're pretty happy to say that we are
+[08:00] achieved
+[08:01] the main basics of a pkcs
+[08:04] token and now we can really start
+[08:06] implementing cryptographic
+[08:08] apis and objects that will really help
+[08:11] will deserve
+[08:12] in the real world so what we are achieved
+[08:14] today
+[08:15] is a slot and token discovery and
+[08:18] management
+[08:19] all the user session management and with
+[08:22] the user
+[08:22] authentication based on pins and also
+[08:26] an alternate authentication means based
+[08:29] on linux access control lists
+[08:33] we manage basic objects being session or
+[08:36] permanent
+[08:37] objects as well as uh key generations
+[08:41] we do a bit of uh siffering we do a bit
+[08:44] of
+[08:44] key derivation currently only aes
+[08:47] derivation by encryption
+[08:49] we do a bit of mac computation
+[08:53] digest random number generate
+[08:56] generations
+[08:57] and as Ruchika just told uh previously
+[09:01] we have a non-regression test suite that
+[09:03] is available
+[09:04] and to allow us that as we progress in
+[09:06] the in the
+[09:08] development and reviews uh everything is
+[09:10] still
+[09:11] working as expected so just give it a
+[09:14] try
+[09:15] uh you can download the OP-TEE Qemu
+[09:18] deliveries just make a run
+[09:21] with the CFG_PKCS11_TA
+[09:25] equals yes and run the Qemu emulation
+[09:29] and using the pkcs11-tool for example you
+[09:32] will be able to
+[09:33] show to see the uh slots and tokens
+[09:36] that are provided by the pkcs11 TA
+[09:40] and now let's talk a bit about the
+[09:43] client library internals
+[09:46] yeah so uh now what's what's there in
+[09:50] libckteec so for every Cryptoki api
+[09:53] which
+[09:53] the library exposes we have a
+[09:56] corresponding pkcs11 TA command id
+[09:59] and this command id is then used by the
+[10:01] trusted application
+[10:03] so what all does this libckteec do so
+[10:06] it is a very thin
+[10:07] wrapper layer and doesn't do much uh
+[10:08] complex processing
+[10:10] ink all the complex processing is taken
+[10:12] care by the TA
+[10:13] so what library this library basically
+[10:15] does is it serializes the arguments
+[10:17] which are received in the Cryptoki api
+[10:20] and sends it through the TA
+[10:21] along with the TA command id for the
+[10:24] serialization there could be things such
+[10:25] as session id
+[10:26] object id attribute templates mechanisms
+[10:29] or the data which needs to be uh
+[10:31] processed and
+[10:33] the TA does its magic and once uh it
+[10:36] receives the output back
+[10:37] so it is also responsible for
+[10:39] deserializing this data
+[10:41] and uh this can be by deserializing this
+[10:43] could be the error or the success code
+[10:45] maybe the object ids
+[10:47] or object attributes in case of get
+[10:49] attribute value
+[10:50] just remember this is a very thin
+[10:52] wrapper layer the main intention is to
+[10:54] communicate with the
+[10:55] TA which is sitting on the of this side
+[10:58] and now further Cryptoki apis can be
+[11:01] divided into various categories as you
+[11:03] can just mentioned we have general
+[11:05] purpose apis slot management session
+[11:07] management
+[11:08] um key management and even the crypto
+[11:10] function apis
+[11:11] so most of these apis are already
+[11:13] defined in the pkcs11 TA apis
+[11:16] we have the list mentioned in the slide
+[11:18] over here and there are still a few
+[11:20] missing ones
+[11:21] contributions are always welcome so
+[11:23] please feel free to send in a patch to
+[11:25] add any of these missing apis
+[11:28] and now let's move for towards the
+[11:29] design of the TA so as i mentioned
+[11:31] libckteec
+[11:32] is a thin wrapper so now uh if it didn't
+[11:35] you can explain in the design
+[11:36] of the pkcs11 TA if it sits in
+[11:39] the octos
+[11:41] thank you Ruchika um we don't have
+[11:44] enough time to
+[11:45] really dig into the
+[11:49] pkcs11 TA design and implementation
+[11:52] so we just put some big uh
+[11:55] important points here so the TA
+[11:58] supports client sessions so the the
+[12:01] currency can
+[12:02] implement several isolated tokens
+[12:06] each with its own take your storage
+[12:10] uh private objects um
+[12:13] session and object reference are all
+[12:16] registered using lists in the TA so that
+[12:19] sessions
+[12:20] are bound to uh clients and objects are
+[12:23] bound to sessions or to
+[12:26] to the token itself so we use a list to
+[12:28] uh register
+[12:29] all that and to hold on on the hoses
+[12:31] objects
+[12:33] as for the objects objects are lists of
+[12:35] attributes
+[12:36] so in the pkcs11 TA
+[12:40] all these attributes are stored in a
+[12:42] serialized
+[12:44] byte stream and it is the way it's empty
+[12:47] it's uh
+[12:47] handled in the TA and it's also the way
+[12:50] the
+[12:50] object is stored in the secure storage
+[12:53] when it's a
+[12:54] persistent object and so each time an
+[12:57] object
+[12:58] will be used or will be created for some
+[13:00] processing
+[13:01] the object that we use will be checked
+[13:04] against the user credentials
+[13:06] the token states or the target
+[13:08] processing expected
+[13:10] um as Ruchika just said
+[13:14] regarding the crypto operations
+[13:17] in the pkcs11 TA we rely on the OP-TEE
+[13:21] itself to do the other cryptographic
+[13:24] part
+[13:24] as well as the secure storage part so
+[13:27] the pkcs11 TA
+[13:28] is based on the global platform internal
+[13:31] core TEE
+[13:32] api for all those management
+[13:37] um i guess that's all we'll say on the
+[13:40] TA implementation the code is there so
+[13:42] uh feel free to
+[13:44] to have a look at it and uh comment if
+[13:46] you if you want
+[13:48] uh let's talk a bit about user
+[13:51] authentication specifically
+[13:53] um in the
+[13:56] uh pkcs 11 specification
+[14:00] the standard way to login into the
+[14:03] the token for a user is to provide a pin
+[14:06] value
+[14:07] so this was handled from the very
+[14:09] beginning in the
+[14:11] pkcs 11 OP-TEE project
+[14:14] and we had this nice contribution
+[14:18] from a Vesa and Eero from Vaisala Oyj
+[14:22] that proposes a scheme where we can
+[14:26] benefit from the linux access control
+[14:29] list and the
+[14:30] user and group ids to
+[14:33] allow specific applications to register
+[14:36] and to identify
+[14:37] to authenticate into the token without
+[14:40] needing
+[14:42] a pin that should be stored in the
+[14:44] client non-secure world and
+[14:46] may be exposed so the all user
+[14:49] authentication of the
+[14:50] pkcs 11 token would be based on the
+[14:54] linux access control list and so the um
+[14:58] uh contribution from Vesa and Eero proposes
+[15:01] all the implementation
+[15:02] in the uh several non-secure and secure
+[15:05] part and they also propose a
+[15:06] configuration to
+[15:08] to help one uh defining the credentials
+[15:11] for the security officer and user
+[15:13] using either pin or linux ACL means
+[15:19] and now let's talk a bit about the
+[15:21] testing part
+[15:22] Ruchika yeah so how do we test the pkcs
+[15:27] 11 apis which we have added
+[15:29] so one thing which we do is uh we use
+[15:31] the OP-TEE test suits that is the xtest
+[15:33] so as we are adding new apis we add in
+[15:36] tests over there
+[15:37] and with each test we try to test both
+[15:41] invalid as well as the invalid uh cases
+[15:43] for the apis and some minimal crypto
+[15:45] algorithm compliance
+[15:47] so in order to run these tests you can
+[15:49] use the xtest with an option pkcs11
+[15:52] and you will have the 11 tests running
+[15:55] so we're apart from that we are also
+[15:56] exploring that if we can use some
+[15:58] already available test suite
+[16:00] so pkcs11 is a well-known standard but
+[16:02] unfortunately we didn't find any
+[16:04] standard compliance suit which is
+[16:06] available which can be used to set test
+[16:07] these pkcs 11 apis
+[16:09] and confirm to confirm to us whether we
+[16:11] are uh
+[16:12] actually complying to the standard or
+[16:14] not so it looks like every as hsm does
+[16:17] their own testing
+[16:19] but we did find two of these two of the
+[16:21] test implementations
+[16:22] uh which may not be complete but uh do
+[16:25] help us enhance
+[16:26] the compliance testing which we're going
+[16:28] to do so one of these is the pkcs11 test
+[16:31] so this is a test suit which is using
+[16:33] google test framework
+[16:35] and uh we've given in details on how you
+[16:37] can build it and use it for the testing
+[16:40] we are trying it in the chemo
+[16:41] environment but please note that this is
+[16:43] a work in progress
+[16:45] so you'll see that there are failures
+[16:47] when you're trying this
+[16:48] thing out this may be due to the missing
+[16:50] features in the implementation which and
+[16:52] we are in the process
+[16:53] of adding and sometimes there is a
+[16:55] variation in the type of error code
+[16:57] which is returned
+[16:58] like uh the specification is not very
+[17:01] clear on whether we should be returning
+[17:02] a template called incomplete or a
+[17:03] template inconsistent type of error
+[17:06] so that kind of mismatches are there so
+[17:08] we're looking at these failures and
+[17:10] we'll fix them as we move along
+[17:12] so again contributions are welcome for
+[17:14] this
+[17:16] and another test suit which we are
+[17:18] exploring
+[17:19] is the unit test which is available with
+[17:20] the SoftHSM
+[17:22] so SoftHSM is a software based
+[17:24] implementation
+[17:25] for an hsn which exposes pkcs 11 apis
+[17:29] it is widely used by people just for
+[17:31] testing stuff out
+[17:32] and it also has a a well-formed unit
+[17:35] test suit
+[17:36] which can be built standalone and used
+[17:39] with other Cryptoki libraries
+[17:40] so this is what we tried uh we picked up
+[17:43] this unit test from the SoftHSM
+[17:46] and try to compile it standalone and
+[17:48] then use it with the Cryptoki a
+[17:50] library
+[17:51] which we expose using OP-TEE and
+[17:54] details are available at the link which
+[17:56] is over here
+[17:57] again a note this is again a work in
+[18:00] progress you'll see many cases
+[18:01] failing but this will give you an idea
+[18:04] of where we are
+[18:05] with respect to the compliance then uh
+[18:09] ethn mentioned about various packages
+[18:10] standard packages which are available
+[18:13] so pkcs11 tool is one of the popular
+[18:15] packages
+[18:16] and which provides in command line
+[18:18] utilities to use these apis without
+[18:20] getting into the details of apis or the
+[18:23] parameters etc
+[18:25] we already have it added in the build
+[18:26] root in the OP-TEE-built environment
+[18:28] and on the slide we've also added a few
+[18:31] sample commands
+[18:32] which can help you play around with the
+[18:34] token like get in the token slot
+[18:36] information
+[18:37] initialize the token generate a key list
+[18:40] objects etc
+[18:41] so please feel free to try it in any
+[18:43] feedback is welcome
+[18:45] or any contribution is welcome for the
+[18:47] same
+[18:48] so uh now this is about the testing and
+[18:51] what what are we going to do as next
+[18:53] steps so
+[18:55] now that we have the basics in like we
+[18:57] have the basics of most of the session
+[18:58] management
+[18:59] uh the cryptographic operation which are
+[19:01] then which are in
+[19:03] we are really looking forward to adding
+[19:04] the ecdsa and the rsa support
+[19:07] and this would make release ready to be
+[19:09] used for a remote token
+[19:11] uh for platforms that support OP-TEE or
+[19:13] real life use cases
+[19:15] so uh easy patches pr is already
+[19:18] there in review and thanks to Vesa for
+[19:20] that
+[19:21] and we're also looking at implementing
+[19:23] the wrapping and the unwrapping apis
+[19:25] and adding more mechanisms for symmetric
+[19:28] ciphers
+[19:29] max or the key derivation functions and
+[19:33] as i mentioned about the test suits we
+[19:35] want to improve in the test results of
+[19:37] pkcs11
+[19:38] test and the SoftHSM unit test so it's
+[19:40] another thing which we want to
+[19:41] accomplish
+[19:43] there are some improvements which can
+[19:45] also be done from design perspective
+[19:48] yes currently these are some areas
+[19:52] that are quite raw in the implementation
+[19:54] that that could be uh refined so
+[19:56] in the next steps maybe we can improve
+[19:58] the data storage maybe
+[20:00] to split uh private objects from
+[20:03] specific objects or to
+[20:05] make a better isolation of the
+[20:08] tokens that are implemented by the tta
+[20:11] when there are several tokens
+[20:13] uh also we should do some garbage
+[20:15] collections of the uh secure storage
+[20:18] contents because during the uh
+[20:21] life time of the TA there may be
+[20:25] objects that are created and while the
+[20:28] device runs into some power failure and
+[20:30] some
+[20:32] left content in the secure storage that
+[20:34] must be clean
+[20:35] so it's something we should address and
+[20:38] also put some documentation
+[20:40] in the OP-TEE generic documentation
+[20:44] about what is supported in the pkcs 11
+[20:48] TA well
+[20:51] um thanks last uh thank you everybody
+[20:53] for watching this
+[20:55] video and we really want to make a warm
+[20:58] uh thanks to everybody that contributed
+[21:01] to this uh
+[21:02] to this project uh with all the
+[21:04] contributions being code called reviews
+[21:07] issues comments or whatever so we put a
+[21:10] few of the names here
+[21:11] that really participated but it's not
+[21:14] all of them so
+[21:16] thank you to all of them and uh let's
+[21:18] see this uh still progressing
+[21:20] and uh reaching a really useful state
+[21:24] thanks to all and if you have questions
+[21:27] do not hesitate to use uh
+[21:28] to use a chat bye bye everyone
+[21:32] thanks for attending the session

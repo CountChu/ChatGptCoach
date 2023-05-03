@@ -1,0 +1,668 @@
+[00:12] good morning everyone welcome to join
+[00:14] the session I'm James and this is SY
+[00:18] today we are going to talk about how we
+[00:22] implement secure storage in OP-TEE ok
+[00:30] and this is today's agenda I will go
+[00:35] through the overview and the key
+[00:37] managers section and SY will talk
+[00:39] about the atomic operation and future
+[00:43] work this slide I will give a brief
+[00:52] intro to use of our secure storage
+[00:54] assistant architecture yeah and as we
+[01:00] know in um and processor we have the
+[01:06] two worlds one is normal world
+[01:08] another in secure world the OP-TEE is secure OS
+[01:13] running in secure world and currently the OP-TEE
+[01:20] provided the Global Platform API for the
+[01:26] trusted application running in the secure world
+[01:33] and if you want to use we want to assess
+[01:42] the one who store some and file of data
+[01:47] you can use the global platform trusted
+[01:51] storage API to handle lots of objects and in
+[01:56] Global Platform API identified two kinds
+[02:00] of object one is transient object this
+[02:05] temporary keep kept in secure memory and
+[02:09] if the trusted application is closed or
+[02:12] object is closed
+[02:13] the data will be gone and another one
+[02:18] is the persistent object the that the
+[02:22] persistent object were kept in
+[02:26] the secure storage and that you can use
+[02:30] those those data next time when you
+[02:37] runnin in the trusted application yeah so
+[02:42] in secure world kernal space we have
+[02:49] implement trusted storage service
+[02:53] layer to handle this to kind of object
+[02:58] so follow transient object it
+[03:04] only handle in the service state and
+[03:06] will not go down to other component if
+[03:11] you if the object is a persistent object the service
+[03:16] they will handle those objects through
+[03:19] our TEE file system so we have implemented
+[03:26] simple file system in secure
+[03:32] world kernel space but currently the
+[03:38] persistent object is in active
+[03:41] implementation we are stored those
+[03:45] persistent objects in normal world file system
+[03:49] right now we are developting using in
+[03:55] Linux environment so the normal
+[03:57] world operating system is Linux so you can
+[04:01] imagine that the persistent objects keep
+[04:03] in Linux file system in some folder
+[04:07] and for in order to simplify the trusted
+[04:14] storage service implementation so we
+[04:19] provide TEE file operation interface
+[04:24] which is which is
+[04:26] similar to the ???pauses??? like file system
+[04:30] API so in in RTOS kernel there we can
+[04:37] call open rewrite - duel - duel file
+[04:43] operation and how how the TEE file system to
+[04:51] access the the real file in real data in
+[04:57] normal in OP-TEE we we implement the
+[05:04] supplicant there is normal world user space
+[05:07] demon yeah and the TEE Supplicant can
+[05:16] communicate communicate with TEE file system and by
+[05:21] the remote procedure call so when 
+[05:26] TEE file system want to access the data in normal world
+[05:30] you will send the RPC message to
+[05:34] TEE Supplicant to handle those objects
+[05:39] yeah okay and in TEE file system and because our
+[05:51] data is stored in an non secure storage
+[05:54] so we need to do the encryption before
+[05:59] we store the data in the normal world so we
+[06:03] need a key manager to help us to do this
+[06:07] and another important feature in TEE
+[06:14] file system is the we support atomic
+[06:18] operation for object data update if
+[06:24] we if the if you want try to write some
+[06:31] data to object or modify the data content
+[06:35] if something wrong wish you go back
+[06:40] to previous state of the object
+[06:43] so today we will focus on the key
+[06:46] manager and the atomic operation and in
+[06:54] Global Platform spec there are some
+[06:57] requirement for the trusted storage so
+[07:02] when went inside the secure storage we
+[07:06] should keep those requirement in mind
+[07:08] and to make sure we have a lie with
+[07:11] those with requirement yeah and first
+[07:16] one is we must pump the pump it to a
+[07:19] particular device this means we can SS
+[07:27] up sure in another device if the archer
+[07:31] is created by by by the bio device okay
+[07:43] so the up journey can be SS where they
+[07:49] created those device the next wise we
+[07:54] should currently the confidentiality and
+[07:57] the integrity of the data this mean wish
+[08:01] you to because we stored at a time and
+[08:06] unsecured storage so issue do the
+[08:09] encryption and when we access the app to
+[08:13] issue to some integrity checking the up
+[08:15] to and less once we we should provide
+[08:19] the atomic operation so they which we
+[08:24] can make sure that the object is always
+[08:29] varied even the some of the other
+[08:33] operations fail and which you have the
+[08:38] ability to hide the sensitive key
+[08:41] founder ta so we provide a key manager
+[08:46] in OT file system and for each ta we
+[08:52] should provide a separate
+[08:54] storage space for that year I mean up
+[09:00] jerk we're by one year cannot be a visit
+[09:04] with visible or accessible by another
+[09:07] thing yeah and this ones that we should
+[09:14] provide mechanism to detect the rope act
+[09:18] attack let me know some attacker might
+[09:24] because our objects though in normal so
+[09:27] some attacker maybe pick up the the
+[09:33] object and after we update some we are
+[09:38] tell us object you were we recovered the
+[09:43] object to the previous day and this
+[09:47] should be some attack we we should
+[09:51] prevent those kind of attack but we are
+[09:54] not done this yet this our future work
+[09:58] and in previous we will mention we
+[10:07] provide the vial operation interface
+[10:10] just like poses persistent API and this
+[10:19] die we will show how we what the first
+[10:26] charger and how is how persistent object
+[10:30] will be represent in normal file system
+[10:35] first of all we provide separate folder
+[10:40] for each trusted application so in
+[10:44] normal assistant we have a folder
+[10:47] consolation data HT and under the folder
+[10:51] we were created the TF of order for each
+[10:59] of the ta because for it should trust
+[11:04] the application there
+[11:07] they have a UUID unique IP so we use the
+[11:12] the ideas the folder name and for each
+[11:17] object belong to the trusted application
+[11:20] we were create a folder for the object
+[11:25] and using the API T the archer ID is
+[11:30] provided by T you can the app ID you can
+[11:38] see this is equal to the t file name
+[11:42] yeah and this is you can imagine a this
+[11:56] is a persistent object and actually how
+[11:59] we store the posts and updates we we use
+[12:07] with we have a meta file in the under
+[12:13] the actuality folder to describe some to
+[12:20] describe some information for the t file
+[12:24] and we have several proc file to store
+[12:30] the actual content store in the person
+[12:35] object and for now the meta file is
+[12:43] always encrypted but the Wildfire is
+[12:46] optionally encrypted you can change the
+[12:52] chancellor setting by the competent
+[12:55] freak and I think we should enforce the
+[13:00] encryption of all the data store in
+[13:03] normal but this is option because some
+[13:07] someone somebody may need the need to
+[13:12] debug their trusted application so you
+[13:14] can it's disabled
+[13:18] in encryption option yeah but I think in
+[13:24] production in importation environment
+[13:28] which you forced to enable this option
+[13:33] and this is the default size we we can
+[13:44] figure in our source code for now the
+[13:49] for each block the maximal proc file
+[13:55] sizes for 4 K PI this mean if you're
+[13:59] persistent object data size is over 4 K
+[14:04] PI we will create a new part file to
+[14:07] store your persistent object data and
+[14:11] the D for maximum number of Records 1024
+[14:19] solo makes multi file t-virus formica pi
+[14:26] and this can this is configurable and
+[14:36] next session we were called Co super
+[14:40] detail of the key manager the no key key
+[14:53] major responsibilities to provide file
+[14:56] encryption and decryption function and
+[15:00] should be responsible for to some key
+[15:04] management so in divas and there are two
+[15:10] two kinds of sensitive key material
+[15:14] should be meant should be handled in key
+[15:19] manager only and Shuna be visible
+[15:23] outside the key merger why is the secure
+[15:26] storage key and now another wise file
+[15:30] encryption
+[15:31] the secure storage keys per device key
+[15:36] so we can use that key to make sure the
+[15:43] persistent Archer cannot be SS by
+[15:48] another device and this is the keys used
+[15:54] used for the two useful file encryption
+[16:00] key encryption and the decotion there is
+[16:05] a we we use the secure storage which key
+[16:10] tube for take our file encryption key
+[16:14] and later we will show how we store the
+[16:18] file encryption key in in normal file
+[16:22] system so because for each of the T if I
+[16:28] wish you generate a file encryption key
+[16:30] follow follow TEE file and the file in
+[16:36] question key will bestow in the meta
+[16:40] file of the TEE file so people before
+[16:48] they we should encrypt the file
+[16:49] encryption key by the secure storage key
+[16:53] and by the way the secure storage key is
+[16:57] generated and will be kept in secure
+[17:03] memory when when the device is put
+[17:18] thank you
+[17:19] so is that secured storage key per
+[17:21] device is that linked to a a root key on
+[17:25] the device you mean real key you are at
+[17:32] the SSK key yes that ultimately linked
+[17:35] to a root key on the device to maintain
+[17:39] the hardware root of trust idea staff
+[17:46] you derived a secure storage Keith place
+[17:49] from some kind of a hard one unique
+[17:50] here's something then they're randomly
+[18:00] generated and then they are encrypted
+[18:02] using this SSK next slide will show how
+[18:13] the how these two type of key will be
+[18:17] will be generated for the secure storage
+[18:22] key we use the H Mac sha-256 to to
+[18:30] generate the secure storage key and the
+[18:34] the key the key for H Omega is how a
+[18:42] unity and the data the input a tot who H
+[18:48] makers is the chip ID can concatenate
+[18:54] with the state extreme and and for the
+[19:01] file encryption key this is generally
+[19:05] generated by pseudo-random number
+[19:08] generator that for now the thief or
+[19:12] shoot or in the number generator is the
+[19:18] Fortuna and this implement in life Tong
+[19:22] crypt
+[19:25] and the how how we how we get the power
+[19:32] unity and the chapatis depend depend on
+[19:37] the prayerful important layer so you can
+[19:43] implement your own function to return
+[19:46] the with a new highway unique he and the
+[19:49] chapati and the static string is because
+[19:56] we we may have several sub system in up
+[20:02] t in future right now only only have a
+[20:06] secure storage subsystem and in in the
+[20:10] future we may have several subsystems or
+[20:13] which you avoid other others are
+[20:17] subsystem to general the center Tversky
+[20:21] so we can choose different state extreme
+[20:26] for different subsystem
+[20:39] I'm just you use the H make function to
+[20:44] derive the SSK
+[20:46] you could also use AES to derive the SS
+[20:49] k was there any specific reason why you
+[20:52] choose H make function to derive the key
+[20:54] or I think
+[21:05] performers I think this performance
+[21:10] considerations oh okay just choose we
+[21:13] did not use the key derivation function
+[21:16] to the rad another key we just used a
+[21:23] first way to generate a unique key for
+[21:26] the subsystem
+[21:37] okay
+[21:40] and next we will show how we how we
+[21:45] encrypt the metadata and show the format
+[21:51] of the meta file right now the meta data
+[21:58] is encrypted by using AES GMO and we
+[22:06] wish you general meta I be the initial
+[22:10] vector for the alias TCM and another
+[22:16] default evidences 96 bits and the key
+[22:23] for the alias to Jian to encrypt the
+[22:26] metadata the VK file encryption key so
+[22:36] after 2 encryption is juicy and we will
+[22:42] output encrypt encrypted metadata and
+[22:46] attack so we were stored the encrypted
+[22:53] metadata tag and the meta IV in the meta
+[22:58] file also we need to stall the fek in
+[23:07] meta file also but before before a we
+[23:11] should encrypt the apk so we use the SS
+[23:15] scale as the key and using the AES DCP
+[23:21] more to to include the VK then store in
+[23:25] meta file yeah and because we should
+[23:30] make make sure the integrity of whole
+[23:33] meta file so issue the encrypted PK
+[23:42] should be as input parameter and follow
+[23:48] alias GCM to calculate the tag also so
+[23:53] we can
+[23:54] the homemade apple pie I will take to
+[23:59] make sure that mattify will not be
+[24:01] tempered by another and authorize the
+[24:04] user and this show our metadata data
+[24:16] structure so right now we have the
+[24:18] talents and the conversion table the
+[24:23] perversion table is useful at atomic
+[24:26] operation as why we go through the
+[24:29] detail or the conversion table and the
+[24:37] bulk data encryption is similar to the
+[24:40] meta data encryption so we the same we
+[24:45] use a SGC mo to encrypt the part data
+[24:48] and also we which we need to general
+[24:52] generator bra but I be for the product
+[24:56] data encryption and fek is come from the
+[25:01] meta file because each time when we open
+[25:06] the file which you are open and the
+[25:11] rhythm at our file first and when we get
+[25:15] there include encrypted fek we will use
+[25:19] the SS k to do the decryption so we can
+[25:23] get the efi cave then we can do the
+[25:27] encryption and decryption of the proc
+[25:30] file so this is the format of one proc
+[25:38] file
+[25:44] okay and next s why we go to atomic
+[25:50] operation
+[25:59] hi and sy and I will cover the following
+[26:03] two sessions so first I will show you
+[26:07] how we extend our current inflation to
+[26:11] support atomic update and the other is
+[26:14] future work first of all I will I would
+[26:20] like to show you why it's atomic update
+[26:23] simplify speaking if something goes
+[26:27] wrong when when you are doing update and
+[26:30] you need to go back to the aubergine
+[26:34] so either successfully update or no
+[26:39] change has been met
+[26:40] this is atomic obtain to achieve this
+[26:45] you can think we cannot directly modify
+[26:48] the file accounting because if something
+[26:52] goes wrong you are unable to recover
+[26:54] so we shall use out of press update
+[26:59] instead ladies we make a copy of the
+[27:04] original file and make update tool a
+[27:07] copy and after you make sure the copy
+[27:11] the update is completed then you remove
+[27:14] the original file so how how do we
+[27:22] extend our implantation to support our
+[27:25] play at a four post meta and black file
+[27:30] we create another attribute called Becca
+[27:34] version Petrosyan could be 0 or 1 and if
+[27:39] you see the meta fact 1 it means the
+[27:43] meta file is checked with Becca version
+[27:45] 1 and if you see the product n dr. phero
+[27:49] it means the platen is tagged with Becca
+[27:53] between 0 and we talked of the peccable
+[27:57] swing
+[27:58] if type when we want to update data so
+[28:02] for example if you are currently using
+[28:04] the picaros in 0 after update it will
+[28:08] become
+[28:09] version 1 and then version 0 and so on
+[28:12] so forth let's take an example if you
+[28:17] want to update to theta to 0 you need to
+[28:21] create a copy and write it here after
+[28:26] you make sure the right is completed
+[28:28] then you remove the theta to 0 similarly
+[28:32] if you want to update to theta 1 you
+[28:35] should create copy update and remove so
+[28:42] we should follow in the rule to update
+[28:45] our meta and proc file or if something
+[28:49] wrong we cannot recover so how do we
+[28:56] keep trip
+[28:57] the current recovering we are referring
+[29:01] to for example if you want to read data
+[29:05] from black 0 how do you know you should
+[29:08] read from the pick up 0 or pick up one
+[29:11] so we introduced a version table in our
+[29:18] metadata which is used to keep trip the
+[29:21] current current version of each block in
+[29:26] this example we have routing table 0 1 1
+[29:29] and this means we have practiced the
+[29:32] Rotax 0 ref 1.1 and black to tell one
+[29:39] the metafile itself also take with meta
+[29:44] that pekka version but we don't have
+[29:48] strands told to stow the Pecha version
+[29:51] of meta file so we will try post where
+[29:55] we open a TEE file a theory we were only
+[30:01] one meter file existed in in the rest of
+[30:09] the session I will show you how we
+[30:12] implement each operation like a race
+[30:17] required to P atomic in GP standard
+[30:21] let's write Chang Caine renin and create
+[30:25] delete before we start I will show you a
+[30:31] general rule we made to do a two atomic
+[30:37] operation so we shall follow the step
+[30:39] two two rows operations we spread the
+[30:45] update operation into three stage if we
+[30:48] failed in the first two stage the
+[30:51] operation is failed and then we shall go
+[30:55] back to original version and if we felt
+[30:58] at a third stage the operation is
+[31:02] considered success and the arrow will be
+[31:06] ignored so the first stage is off press
+[31:10] update stage in this stage we will do
+[31:13] our press update to our proc file so if
+[31:17] you fail in this stage your origin no
+[31:21] data can be recovered the first the
+[31:25] second stage is a critical stage because
+[31:29] after this stage the new tea file will
+[31:32] become very and the old TT file will
+[31:35] become embedded in this stage will do
+[31:38] the hour of press update whoever made
+[31:40] her file and after this stage the new
+[31:47] virus is become very so in the third
+[31:52] stage we need to remove the outage the
+[31:56] block rate referred by the all metal
+[31:59] file because the ohmmeter file is a
+[32:02] married you may ask if we fail in one of
+[32:07] the three stage we might end up with
+[32:11] some garbage proc old data file in in
+[32:19] many case we are able to clean clean
+[32:23] them up but if in some case just like
+[32:27] certain in certain and we have no chance
+[32:30] to clean loss coverage so
+[32:35] think is to implement a tool insecure
+[32:38] let's scan the skin of the file under
+[32:42] the tea after photo and to release loss
+[32:46] in varied black and made a file and the
+[32:50] idea is a similarly to the fsck for
+[32:53] Linux file system so if your Linux
+[32:56] distribution detect an abnormal power
+[32:59] cycle you were forced to do the
+[33:01] filesystem check before you monkey you a
+[33:04] root resistant okay so let's go through
+[33:08] each each update step a step the first
+[33:12] is write operation so if you want to do
+[33:15] the write operation
+[33:17] you should make a copy of meta in memory
+[33:21] then we will start to do the off press
+[33:24] update to our practice in this example
+[33:27] we will write 20 parts to Prattville we
+[33:33] should also modify the pickup version 4
+[33:35] in the version table then we write 20
+[33:41] part to the copy after the right we can
+[33:47] meet the new data file and we remove the
+[33:50] old 800-meter
+[33:54] now finally we clean up the outdated
+[33:57] proc least finish with the automated
+[34:02] operation for chunky it is similar we
+[34:07] shall create a copy of meta file then we
+[34:12] update the violence from 1.5 kilo pipe
+[34:16] to 500 parts this means from the meta
+[34:22] once point of view the block 1 is
+[34:24] outdated
+[34:26] then we commit the new meta file and
+[34:30] remove the ohmmeter file and finally we
+[34:34] will remove the outdated
+[34:36] black one for the renovation maybe the
+[34:44] simplest way to do this is we make a
+[34:46] copy for all files
+[34:48] from Ooty opted to the neat new tfj
+[34:53] language delete all files in all T
+[34:57] object but this is two guys try
+[35:00] consuming to do this so we use Holland
+[35:03] instead first of all we will create the
+[35:07] hard link for each block from ulti file
+[35:12] to new TEE file then we will create a
+[35:16] Harding from meta file then remove the
+[35:21] ohmmeter file finally we will remove the
+[35:26] outage black file and the softer the
+[35:34] last operation is create create and
+[35:36] delete for create it's equivalent to we
+[35:41] create a meta file with farallon's
+[35:44] 0 so if we can create meta file and and
+[35:49] it is successful writing to our storage
+[35:52] then we are done
+[35:53] but if we are unable to to do this when
+[35:58] no file will be created so the file the
+[36:01] operation itself it's atomic so delete
+[36:06] operation we split the operation into
+[36:09] two stage the first stage we will do the
+[36:13] italic atomic renamed from the target
+[36:17] file name to the target feminine package
+[36:20] and after this step the operation is
+[36:23] completed and then we shall just removed
+[36:27] files under the fair name cartridge
+[36:33] Solis this is for the atomic updates
+[36:36] section then I will describe our future
+[36:40] work the first is we want to buy the TV
+[36:46] fell to OTA as it is described in the
+[36:52] previous slide then the GP standard
+[36:57] requires HT if gia has is wrong its own
+[37:01] private
+[37:02] soul-g space with a fearless requirement
+[37:06] by we create a folder for each ta and we
+[37:10] store out the object of Latia in the TS
+[37:14] folder but because we store those fell
+[37:18] in rich rich always file system then an
+[37:23] attacker may able to copy the an object
+[37:27] from ta ones folder into TS tooth folder
+[37:30] and then open los abjured using ta - and
+[37:35] missus this cannot be detected by our
+[37:38] intelligent implementation a simple way
+[37:42] to solve this is we buy some TS
+[37:47] information into T files meta file for
+[37:52] example we can use the TSU do ID so if
+[37:56] we do this when you open a t file you
+[38:01] should match the UOIT in the meta file
+[38:05] with the current EA if damaged we can
+[38:09] measure the t-virus actually created by
+[38:13] the current here and the other is low
+[38:20] Peck attack detection because we store
+[38:24] our chief else in normal file system and
+[38:28] I take her my able to pick up an object
+[38:32] and restore in the future because the
+[38:35] pickup t file is also very so we we are
+[38:40] unable to detect such katabatic the
+[38:45] solution is we need to add additional
+[38:48] version number in the meta file as well
+[38:52] as another safe press
+[38:55] so we store a row synonym version number
+[38:58] in meta file and in another place when
+[39:03] you when we want to open a t file we
+[39:06] should match the version number in in
+[39:10] the meta file as well as version number
+[39:13] in the South press
+[39:15] the fifth phrase should be safe enough
+[39:17] and cannot be modified by the attacker
+[39:21] so if we can measure the two version
+[39:24] matches and we can make sure the there's
+[39:29] no Lopez attack in GPS stand it is
+[39:36] provided to to cut of protection level
+[39:39] one is 101 into 1000 so if you you
+[39:46] enable petition they were 100 you can
+[39:49] treat you can store the the information
+[39:54] in the normal viruses but I think this
+[39:57] is not safe because the safe press
+[40:01] itself can be also raw egg attack the
+[40:06] other is we can store the the right
+[40:10] counter and the RPM be partition in year
+[40:13] ng device okay place our presentation
+[40:21] thank you for joining us today if you
+[40:28] has you are welcome to ask questions
+[40:37] so when you're securely writing all
+[40:39] these blocks to memory
+[40:41] how much overhead is there is there been
+[40:44] I assume all this code has gone object to
+[40:48] github at this point and I guess people
+[40:49] are probably analyzing the performance
+[40:52] we have yeah we have analyzed
+[40:56] performance but with that we did not
+[40:59] analyze the overhead we split a file
+[41:03] into brats we did not analyze the
+[41:07] promote performance between we store all
+[41:11] information in one file and we split
+[41:15] those into blocks within we denied
+[41:17] analysis but we have analyzed the
+[41:21] performance with and without block
+[41:25] encryption so is there yeah how would
+[41:32] you optimize or improve what what kind
+[41:35] of steps could you take if you had to
+[41:37] improve the performance
+[41:50] so this is our benchmark for in with
+[41:56] Brock encryption and we saw pratt
+[41:59] encryption and currently wicked we get
+[42:03] Mary very roasted also pie pie pie read
+[42:08] and write as you see here but we are
+[42:15] currently working brackets so we we keep
+[42:22] some song trucks in T's OSS memory so
+[42:28] this may able to improve the read speed
+[42:34] thank you what are you going to sport as
+[42:49] well so what's the underlying storage
+[42:55] mechanism and what are your plans for
+[42:58] different kinds of storage thank you
+[43:04] your question was if we are using emmc
+[43:07] for this storage no we're using the
+[43:10] flash in a normal world user space and
+[43:13] as I mentioned one of the things on the
+[43:16] to-do list is connected with our PMB so
+[43:19] in that case we're going to use emmc but
+[43:22] one of the big challenges and one of the
+[43:24] reasons why we have is quite bad
+[43:26] performance is that we are constantly
+[43:28] going back and forth between normal
+[43:30] world and secure world all the time all
+[43:32] the time so that's why you had one some
+[43:36] idea of caching operations you can use
+[43:38] many operations with fewer calls and so
+[43:42] on maybe the most efficient way to do
+[43:46] this is we implement a true filesystem
+[43:50] insecure and the RPM p partition but the
+[43:55] PMB partition is usually very small so
+[43:59] we are unable to stall many data it
+[44:02] so in our our design we store the data
+[44:07] and no more persistent and we store the
+[44:12] right counter
+[44:13] Emira counter an RTMP partition yeah but
+[44:16] because we have defied the posse strike
+[44:19] fail operation so maybe we could not
+[44:22] support another file system in the
+[44:25] future they can operate territory under
+[44:28] a PNP partition with my dramatically
+[44:33] improved performance because we do not
+[44:36] have to do the RPC call it it's a lot of
+[44:50] ping pong so if we were able to combine
+[44:53] some operations for instance we would
+[44:55] probably see a huge improvement in
+[44:58] performance also well what is the
+[45:04] general sense after watching this stuff
+[45:06] does its own saying or do you spot
+[45:08] anything strange immediately or so we
+[45:17] have we have a proprietary
+[45:18] implementation of this adoptee right now
+[45:20] and I'm just wondering why you have so
+[45:25] many file operations needed back and
+[45:29] forth between the secure and non-secure
+[45:31] world shouldn't you just need to store
+[45:35] your keys and an encrypted file in in
+[45:38] flash and then load them once to the
+[45:40] secure world and after that you really
+[45:42] don't need to access anything in the
+[45:45] file system I'm just wearing what the
+[45:48] end application is here then that needs
+[45:50] all these out these accesses
+[46:01] I think in our implementation this is a
+[46:09] simplified version because we leverage
+[46:13] the normal file system to store our data
+[46:16] so we did not impress implement the
+[46:20] actual file system layer in our our TEE
+[46:26] so we can't directory up SS to a proc
+[46:31] device yeah I'm just wondering what in
+[46:35] the secure world needs all these file
+[46:38] operations what is the application that
+[46:41] actually requires all of this so usually
+[46:46] you use Prospero operation to stow keys
+[46:49] right so that's very infrequent not very
+[46:53] frequent yeah but because they see they
+[47:01] they say there is a persistent object
+[47:05] operation that lace required by the GP
+[47:09] standard so we must we must implement a
+[47:13] file like file right operation to
+[47:18] support okay so so you have infrequent
+[47:22] accesses as well as what I'm basically
+[47:24] asking that you only do this a couple
+[47:27] times and then once you load the keys
+[47:29] from the filesystem you just keep them
+[47:31] in the in the trusted world thereafter
+[47:35] you don't keep reading and writing them
+[47:36] back and forth
+[47:42] yes you could say that I mean what were
+[47:45] we implementing here is a required API
+[47:48] by a global platform and then how that
+[47:51] API is used yeah probably as you say it
+[47:54] will be used to read up the key and and
+[47:56] then yeah we'll not read this so so
+[47:58] going a further step in putting the
+[48:01] whole file system in the secure world I
+[48:03] don't see that being that valuable at
+[48:05] least for what we use it for it could
+[48:09] depend on for instance if we want to
+[48:12] protect those files from the attacked if
+[48:16] we store it in rpm be normal well can't
+[48:18] remove the keys or corrupted yeah yeah
+[48:22] there there are other ways of storing it
+[48:34] any further question I want to know how
+[48:44] do we access the storage device to your
+[48:47] hair were dry were in your secure world
+[48:51] no advice no we leverage leverage to use
+[48:56] to the space the normal office is sent
+[49:00] to to store our data so we just open a
+[49:05] normal file and write data to it okay
+[49:20] I just won't figure out how many keys
+[49:25] you use in your whole design
+[49:28] I mean maybe every G should use
+[49:31] different keys right we have one secure
+[49:36] storage key and we have many file
+[49:39] encryption key one file encryption key
+[49:43] per file so that means even some other
+[49:47] to access the date which do not belong
+[49:50] to which do not belong to them so but
+[49:53] doesn't matter because you know I can
+[49:56] access it but I don't have this key so I
+[49:58] don't know what it is right yeah okay
+[50:13] okay thank you
