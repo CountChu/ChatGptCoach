@@ -58,8 +58,8 @@ def handle(args, prompt_fn):
         for text in text_ls:
             if line_num % 5 == 0:
                 fw.write('\n')
-                #fw.write('subtitle-post: // The command posts subtitles of the video.\n')
-                fw.write('subtitle-post:\n')
+                fw.write('subtitle-post: // The command posts subtitles of the video.\n')
+                #fw.write('subtitle-post:\n')
                 fw.write('\n')
             fw.write(text)  
             line_num += 1
@@ -69,7 +69,7 @@ def handle(args, prompt_fn):
 
     fw.write(util.break_line())
     fw.write('\n')
-    fw.write('subtitle-end:')
+    fw.write('subtitle-end: // The post is done. You just response the long of the video.')
     fw.write('\n\n')  
 
     fw.close()
