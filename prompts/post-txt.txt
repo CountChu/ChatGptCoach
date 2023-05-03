@@ -1,0 +1,67 @@
+I define commands and describe them in the "//"" comments as below.
+
+//
+// The txt-begin command informs the title of the text will be posted.
+// TITLE is the title of the text.
+//
+
+txt-begin: TITLE 
+
+//
+// The txt-post command posts text.
+// The n in "text_n" is a sequence number. E.g., text_1
+// The TEXT in triple quotes is the text I post.
+// Please just accept them, don't response them, and don't repeat them.
+// I'll use the command many times.
+//
+
+txt-post:
+
+text_n =
+"""
+TEXT
+"""
+
+//
+// An example of the txt-post commands in one chat:
+//
+
+txt-post:
+
+text_1 =
+"""
+[Music]
+with Huawei technology HiSilicon and
+I'm a an assignee in the Linaro security
+working group it's been almost a bit
+more than two years now i think and also
+i'm the current maintainer for OP-TEE so
+my presentation will be about secure
+storage a lots of thing I've been goin
+"""
+
+txt-post:
+
+text_2 =
+"""
+on in that area since last I mean
+connecting San Francisco so i will be
+showing you what's new since that time
+and also what's left to be done because
+there are things that have to be done so
+the agenda is first of all i will
+briefly show what is secure storage i
+guess most of you already know i will
+show you kind of a timeline to show when
+features and modification have been
+"""
+
+//
+// The txt-end command informs you that the post is done. 
+// please response the number of txt-post commands I sent.
+//
+
+txt-end:
+
+--------------------------------------------------------------------------------
+Do you understand the commands?
