@@ -12,10 +12,13 @@
 
 import argparse
 import sys
+import os
 
 from core import util
 from core import gen_post_doc
 from core import gen_post_subtitle
+from core import gen_post_txt
+from core import gen_post_txt2
 
 import pdb
 br = pdb.set_trace
@@ -36,6 +39,12 @@ def build_args():
             --txt txt/6Nwtlxbtujs.txt \\
             -t "HKG18-402: Secure Key Services in OP-TEE" \\
             -o out-subtitle  
+    Ussage 4:
+        python gptcoach.py gen \\
+            -p post-txt \\
+            --txt txt/9OEt4aG6V5w.refine.txt \\
+            -t "LAS16-504 Secure Storage updates in OP-TEE" \\
+        -   o out-txt
 '''
     #
     # Build an ArgumentParser object to parse arguments.
@@ -94,10 +103,23 @@ def handle_list(args):
     print('Supported prompts:')
     print('    post-doc')
     print('    post-subtitle')    
+    print('    post-txt')    
+    print('    post-txt2')
 
 def handle_gen(args):
 
-    prompt_fn = util.get_prompt(args.prompt)
+    util.check_dir_exist('prompts')
+
+    prompt_fn_d = {
+        'post-doc': 'post-doc.txt', 
+        'post-subtitle': 'post-doc.txt', 
+        'post-txt': 'post-txt.txt',
+        'post-txt2': 'post-txt2-3.yaml',
+        }
+
+    prompt_fn = prompt_fn_d[args.prompt]
+    prompt_fn = os.path.join('prompts', prompt_fn)
+    util.check_file_exist(prompt_fn)
 
     if args.prompt == 'post-doc':
         gen_post_doc.handle(args, prompt_fn)
@@ -105,6 +127,11 @@ def handle_gen(args):
     elif args.prompt == 'post-subtitle':
         gen_post_subtitle.handle(args, prompt_fn)
 
+    elif args.prompt == 'post-txt':
+        gen_post_txt.handle(args, prompt_fn)
+
+    elif args.prompt == 'post-txt2':
+        gen_post_txt2.handle(args, prompt_fn)
     else:
         assert False, args.prompt    
 

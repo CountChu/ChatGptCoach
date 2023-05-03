@@ -13,21 +13,10 @@ def check_dir_exist(dn):
         print(dn)
         sys.exit(1)
 
-def get_prompt(prompt):
-    if prompt not in ['post-doc', 'post-subtitle']:
-        return None
-
-    check_dir_exist('prompts')
-
-    out = os.path.join('prompts', f'{prompt}.txt')
-    check_file_exist(out)
-
-    return out
-
 def check_dir_exist_make(dn):
     if not os.path.exists(dn):
         print(f'Make {dn}')
-        os.mkdir(dn)
+        os.mkdir(dn)        
 
 def write_whole_file(fw, fn):
     f = open(fn, 'r', encoding='utf-8')
